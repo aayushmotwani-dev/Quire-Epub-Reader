@@ -23,7 +23,9 @@ jobs:
           if-no-files-found: error
 
   mac:
-    runs-on: macos-latest
+    # Intel Mac. GitHub's Apple-silicon Macs are often full ("capacity constraints").
+    # It still builds both the Apple-silicon (arm64) and Intel (x64) versions.
+    runs-on: macos-26-intel
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -63,8 +65,9 @@ jobs:
           if-no-files-found: error
 
   ios:
-    # Capacitor 8 needs Xcode 26, which macos-26 includes.
-    runs-on: macos-26
+    # Capacitor 8 needs Xcode 26; this Intel image defaults to Xcode 26.6.
+    # The Intel Mac also avoids the queue on the Apple-silicon ones.
+    runs-on: macos-26-intel
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
