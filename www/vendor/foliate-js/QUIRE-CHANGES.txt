@@ -1,0 +1,1 @@
+Quire note: paginator.js has two small changes (attributes turn-duration and turn-ease). Everything else is unmodified foliate-js.

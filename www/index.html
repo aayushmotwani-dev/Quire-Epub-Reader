@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Scripts only from this site: a book can never run code here. Keep in sync with vercel.json. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' blob:; img-src 'self' blob: data:; font-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' blob: data:; frame-src 'self' blob:; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>Quire</title>
+<meta name="description" content="A quiet EPUB reader that keeps your books on your device.">
+<meta name="theme-color" content="#ffffff">
+<meta name="color-scheme" content="light dark">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Quire">
+<link rel="preload" href="fonts/geist-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/doto-latin-full-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/app.css">
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+
+<!-- Welcome screen: always black, like the launch screen of the phone apps. -->
+<div id="splash" class="splash" role="status" aria-live="polite">
+  <p class="splash-hello">Welcome,</p>
+  <p id="splash-name" class="splash-name"></p>
+</div>
+
+<a class="skip" href="#grid">Skip to library</a>
+
+<!-- ============================ Library ============================ -->
+<main id="library" class="view" aria-labelledby="wordmark">
+  <header class="lib-head">
+    <h1 id="wordmark" class="wordmark">quire</h1>
+    <div class="lib-actions">
+      <button type="button" id="open-settings" class="icon-btn" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4.5 8h9M17.5 8h2M4.5 16h2M10.5 16h9"/><circle cx="15.5" cy="8" r="2"/><circle cx="8.5" cy="16" r="2"/></svg>
+      </button>
+      <button type="button" class="btn btn-solid add-btn" data-action="add">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        <span>Add books</span>
+      </button>
+    </div>
+  </header>
+
+  <p id="ios-hint" class="hint" hidden>
+    <span>On iPhone and iPad, add Quire to your Home Screen so iOS keeps your books: tap Share, then Add to Home Screen.</span>
+    <button type="button" class="icon-btn" id="ios-hint-close" aria-label="Dismiss" title="Dismiss">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </p>
+
+  <section id="now" class="now" aria-label="Continue reading" hidden></section>
+
+  <section id="shelf" class="shelf" aria-labelledby="shelf-title" hidden>
+    <div class="shelf-head">
+      <h2 id="shelf-title">Library <span id="lib-count" class="count"></span></h2>
+      <div class="shelf-tools">
+        <label class="field search-field">
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="6.2"/><path d="M20 20l-4.6-4.6"/></svg>
+          <span class="sr">Search your library</span>
+          <input id="lib-search" type="search" placeholder="Title or author" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="field select-field">
+          <span class="sr">Sort by</span>
+          <select id="lib-sort">
+            <option value="recent">Recent</option>
+            <option value="title">Title</option>
+            <option value="author">Author</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <ul id="grid" class="grid" tabindex="-1"></ul>
+  </section>
+
+  <section id="empty" class="empty" hidden>
+    <p class="dot-number empty-number" aria-hidden="true">0</p>
+    <h2>No books yet</h2>
+    <p>Add EPUB files from this device. They stay here, and work without a connection.</p>
+    <button type="button" class="btn btn-solid" data-action="add">Add books</button>
+    <p class="drop-note">Or drop them anywhere on this window.</p>
+  </section>
+
+  <div id="book-menu" class="menu" role="menu" hidden></div>
+</main>
+
+<!-- ============================ Reader ============================ -->
+<section id="reader" class="view" aria-label="Reader" hidden>
+  <div id="stage"></div>
+  <div id="turn-fx" aria-hidden="true"><div class="fold"></div></div>
+  <div id="ribbon" aria-hidden="true"></div>
+
+  <header id="r-top" class="chrome chrome-top">
+    <button type="button" id="r-back" class="icon-btn" aria-label="Library" title="Library">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <p id="r-title" class="r-title"></p>
+    <div class="chrome-actions">
+      <button type="button" id="r-search" class="icon-btn" aria-label="Search in book" title="Search in book">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="6.2"/><path d="M20 20l-4.6-4.6"/></svg>
+      </button>
+      <button type="button" id="r-toc" class="icon-btn" aria-label="Contents and notes" title="Contents and notes">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.6" cy="6.5" r=".6" fill="currentColor"/><circle cx="4.6" cy="12" r=".6" fill="currentColor"/><circle cx="4.6" cy="17.5" r=".6" fill="currentColor"/></svg>
+      </button>
+      <button type="button" id="r-mark" class="icon-btn" aria-label="Add bookmark" title="Add bookmark" aria-pressed="false"></button>
+      <button type="button" id="r-full" class="icon-btn" aria-label="Full screen" title="Full screen">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15"/></svg>
+      </button>
+      <button type="button" id="r-aa" class="icon-btn aa-btn" aria-label="Appearance" title="Appearance"><span aria-hidden="true">Aa</span></button>
+    </div>
+  </header>
+
+  <footer id="r-bottom" class="chrome chrome-bottom">
+    <div class="r-row">
+      <p id="r-chapter" class="r-chapter"></p>
+      <p id="r-left" class="r-left"></p>
+    </div>
+    <div class="scrub">
+      <div id="r-segbar" class="segbar" aria-hidden="true"></div>
+      <input id="r-scrub" type="range" min="0" max="1" step="0.0005" value="0" aria-label="Position in book">
+    </div>
+    <div class="r-row r-row-quiet">
+      <p id="r-pct"></p>
+      <p id="r-total"></p>
+    </div>
+  </footer>
+
+  <button type="button" id="r-jump" class="jump" hidden></button>
+  <div id="sel-pop" class="sel-pop" role="toolbar" aria-label="Selection" hidden></div>
+</section>
+
+<!-- ============================ Sheets ============================ -->
+<div id="scrim" class="scrim"></div>
+
+<aside id="sheet-aa" class="sheet sheet-aa" role="dialog" aria-modal="true" aria-labelledby="aa-title" hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <header class="sheet-head">
+    <h2 id="aa-title">Appearance</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Close" title="Close">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </header>
+  <div class="sheet-body">
+    <div id="aa-themes" class="themes" role="group" aria-label="Page theme"></div>
+    <label class="row switch-row">
+      <span>Match the app's light or dark</span>
+      <input type="checkbox" id="aa-auto" class="switch">
+    </label>
+
+    <div class="text-only">
+      <div class="row size-row" role="group" aria-label="Text size">
+        <button type="button" id="aa-smaller" class="size-btn" aria-label="Smaller text"><span class="a-small" aria-hidden="true">A</span></button>
+        <output id="aa-size" class="size-val" aria-live="polite"></output>
+        <button type="button" id="aa-larger" class="size-btn" aria-label="Larger text"><span class="a-large" aria-hidden="true">A</span></button>
+      </div>
+
+      <fieldset class="fonts">
+        <legend class="sr">Typeface</legend>
+        <div id="aa-fonts" class="font-list"></div>
+      </fieldset>
+
+      <label class="row slider-row">
+        <span>Line spacing</span>
+        <output id="aa-line-val" class="slider-val"></output>
+        <input type="range" id="aa-line" step="0.05">
+      </label>
+      <label class="row slider-row">
+        <span>Margins</span>
+        <input type="range" id="aa-margin" min="0" step="1">
+      </label>
+
+      <fieldset class="row flow-row">
+        <legend class="sr">Page layout</legend>
+        <div class="segmented">
+          <label><input type="radio" name="aa-flow" value="paginated"><span>Pages</span></label>
+          <label><input type="radio" name="aa-flow" value="scrolled"><span>Scroll</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="row turn-row" id="aa-pages-row">
+        <legend>Pages on screen</legend>
+        <div class="segmented" id="aa-pages"></div>
+      </fieldset>
+      <label class="row switch-row"><span>Justify text</span><input type="checkbox" id="aa-justify" class="switch"></label>
+      <label class="row switch-row"><span>Hyphenation</span><input type="checkbox" id="aa-hyphenate" class="switch"></label>
+      <fieldset class="row turn-row" id="aa-turn-row">
+        <legend>Turning pages</legend>
+        <div class="segmented" id="aa-turn"></div>
+      </fieldset>
+    </div>
+    <p class="fixed-only sheet-note">This book has a fixed layout, so only the page theme applies.</p>
+  </div>
+</aside>
+
+<aside id="sheet-toc" class="sheet panel" role="dialog" aria-modal="true" aria-labelledby="toc-title" hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <header class="sheet-head">
+    <h2 id="toc-title" class="sr">Contents and notes</h2>
+    <div id="toc-tabs" class="segmented tabs" role="tablist" aria-label="Contents and notes">
+      <button type="button" role="tab" data-tab="toc" aria-selected="true">Contents</button>
+      <button type="button" role="tab" data-tab="marks" aria-selected="false" tabindex="-1">Bookmarks</button>
+      <button type="button" role="tab" data-tab="notes" aria-selected="false" tabindex="-1">Highlights</button>
+    </div>
+    <button type="button" class="icon-btn" data-close aria-label="Close" title="Close">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </header>
+  <div class="sheet-body">
+    <nav role="tabpanel" data-tab="toc" id="toc-list" aria-label="Table of contents"></nav>
+    <div role="tabpanel" data-tab="marks" id="marks-list" hidden></div>
+    <div role="tabpanel" data-tab="notes" id="notes-list" hidden></div>
+  </div>
+</aside>
+
+<aside id="sheet-search" class="sheet panel" role="dialog" aria-modal="true" aria-labelledby="search-title" hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <header class="sheet-head">
+    <h2 id="search-title" class="sr">Search in book</h2>
+    <form id="search-form" class="search-form" role="search">
+      <label class="field search-field">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="6.2"/><path d="M20 20l-4.6-4.6"/></svg>
+        <span class="sr">Search in this book</span>
+        <input id="search-input" type="search" placeholder="Search in this book" enterkeyhint="search" autocomplete="off" data-autofocus>
+      </label>
+    </form>
+    <button type="button" class="icon-btn" data-close aria-label="Close" title="Close">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </header>
+  <div class="sheet-body" id="search-results"></div>
+</aside>
+
+<aside id="sheet-settings" class="sheet sheet-aa" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <header class="sheet-head">
+    <h2 id="settings-title">Settings</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Close" title="Close">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </header>
+  <div class="sheet-body">
+    <fieldset class="setting">
+      <legend>Appearance</legend>
+      <div class="segmented" id="set-appearance"></div>
+    </fieldset>
+    <label class="setting">
+      <span class="setting-label">Your name</span>
+      <input type="text" id="set-name" class="text-input" maxlength="24" autocomplete="given-name" spellcheck="false" placeholder="Shown on the welcome screen">
+    </label>
+    <section class="credits" aria-label="Credits">
+      <h3>Credits</h3>
+      <p>Meanings come from Princeton WordNet 3.0. Pronunciations come from the CMU Pronouncing Dictionary. Typefaces: Geist, Doto, Literata, Source Serif and Atkinson Hyperlegible, all under the SIL Open Font License. Pages are laid out with foliate-js (MIT).</p>
+      <p>Your books, highlights and notes stay on this device. Quire never sends a word you look up anywhere.</p>
+    </section>
+  </div>
+</aside>
+
+<dialog id="confirm" class="dialog">
+  <h2 id="confirm-title"></h2>
+  <p id="confirm-body"></p>
+  <div class="dialog-actions">
+    <button type="button" id="confirm-cancel" class="btn btn-quiet">Cancel</button>
+    <button type="button" id="confirm-ok" class="btn btn-solid"></button>
+  </div>
+</dialog>
+
+<dialog id="note-dialog" class="dialog">
+  <h2 id="note-title"></h2>
+  <blockquote id="note-quote" class="note-quote"></blockquote>
+  <label class="sr" for="note-text">Note</label>
+  <textarea id="note-text" rows="5" maxlength="4000" placeholder="Write a note"></textarea>
+  <div class="dialog-actions">
+    <button type="button" id="note-cancel" class="btn btn-quiet">Cancel</button>
+    <button type="button" id="note-save" class="btn btn-solid">Save note</button>
+  </div>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="drop-overlay" class="drop-overlay" aria-hidden="true"><p>Drop EPUB files to add them</p></div>
+<input type="file" id="file-input" accept=".epub,application/epub+zip" multiple hidden>
+</body>
+</html>

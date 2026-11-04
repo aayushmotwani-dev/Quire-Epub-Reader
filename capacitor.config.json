@@ -1,0 +1,11 @@
+{
+  "appId": "app.quire.reader",
+  "appName": "Quire",
+  "webDir": "www",
+  "backgroundColor": "#000000",
+  "ios": { "contentInset": "never", "scrollEnabled": false },
+  "android": { "allowMixedContent": false },
+  "plugins": {
+    "StatusBar": { "overlaysWebView": true }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "name": "quire",
+  "productName": "Quire",
+  "version": "1.0.0",
+  "description": "A quiet EPUB reader that keeps your books on your device.",
+  "author": "Aayush Motwani",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "electron/main.cjs",
+  "scripts": {
+    "desktop": "electron .",
+    "dist:win": "electron-builder --win --x64",
+    "dist:mac": "electron-builder --mac",
+    "cap:sync": "cap sync",
+    "assets": "capacitor-assets generate --iconBackgroundColor \"#ff5f00\" --iconBackgroundColorDark \"#ff5f00\" --splashBackgroundColor \"#000000\" --splashBackgroundColorDark \"#000000\""
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.0.0",
+    "electron": "^45.2.2",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "app.quire.reader",
+    "productName": "Quire",
+    "copyright": "Copyright © 2026 Aayush Motwani",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**",
+      "www/**",
+      "package.json"
+    ],
+    "asar": true,
+    "fileAssociations": [
+      {
+        "ext": "epub",
+        "name": "EPUB book",
+        "description": "EPUB book",
+        "mimeType": "application/epub+zip",
+        "role": "Viewer"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "artifactName": "Quire-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.books",
+      "identity": null
+    },
+    "dmg": {
+      "artifactName": "Quire-${version}-${arch}.${ext}"
+    },
+    "afterPack": "build/adhoc-sign.cjs"
+  }
+}
