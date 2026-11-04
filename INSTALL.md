@@ -53,7 +53,9 @@ Paid Apple Developer ($99 per year) removes the weekly step; ask me and I will s
 - Not yet tested on a real iPhone, Android phone, Mac or installed Windows PC.
 - The dictionary is English only and works fully offline (Princeton WordNet and the CMU Pronouncing Dictionary, about 20 MB inside the app).
   It has meanings, examples, similar words and pronunciation, but no word origins. Their license texts are in `www/dict/`; keep them if you share the app.
-- The page turn is a soft shadow sweeping across the page, not a full 3D curl. It is off in scroll mode and when the device asks for reduced motion.
+- The page turn is a soft shadow sweeping across the page, not a full 3D curl. It is off in scroll mode.
+  If Windows has animations switched off (Settings, Accessibility, Visual effects, Animation effects), Quire starts with no page turn.
+  Open **Aa** and choose **Page turn** to turn it on inside Quire.
 - On iPhone the system's own text menu may appear next to the dictionary card; this is untested on a real device.
 
 ## 4. Before you publish or share anything

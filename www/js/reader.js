@@ -5,7 +5,7 @@ import * as db from './db.js'
 import { loadBookFile } from './importer.js'
 import { guardBook } from './sanitize.js'
 import { readingCSS, themeVars } from './reading-style.js'
-import { getSettings, setSettings, onSettings, resolveThemeKey, onSystemThemeChange, applyAppMode, THEMES, FONTS, MARGINS, LIMITS, TURNS, PAGES } from './settings.js'
+import { getSettings, setSettings, effectiveTurn, systemWantsStill, onSettings, resolveThemeKey, onSystemThemeChange, applyAppMode, THEMES, FONTS, MARGINS, LIMITS, TURNS, PAGES } from './settings.js'
 import { lookup, lookupable, speak, canSpeak } from './dictionary.js'
 import { el, $, $$, ICONS, iconButton, toast, showSheet, closeSheet, isSheetOpen, openSheetId, noteDialog, langMap, formatMinutes, isTouch, isCompact } from './ui.js'
 import { fillSegBar } from './library.js'
@@ -245,12 +245,12 @@ function applySettings() {
     // One page uses the whole window width (the margin slider sets the side space).
     renderer.setAttribute('max-inline-size', s.pages === 'one' ? '4000px' : `${Math.round(s.size * 36)}px`)
     renderer.setAttribute('max-column-count', s.pages === 'one' ? '1' : '2')
-    const still = matchMedia('(prefers-reduced-motion: reduce)').matches
-    renderer.toggleAttribute('animated', s.turn !== 'none' && !still)
+    const turn = effectiveTurn(s)
+    renderer.toggleAttribute('animated', turn !== 'none')
     // "Page turn" is slower and eases in and out, with a shadow along the moving edge.
-    renderer.setAttribute('turn-duration', s.turn === 'page' ? '520' : '300')
-    renderer.setAttribute('turn-ease', s.turn === 'page' ? 'in-out' : 'out')
-    R.fxOn = s.turn === 'page' && !still
+    renderer.setAttribute('turn-duration', turn === 'page' ? '520' : '300')
+    renderer.setAttribute('turn-ease', turn === 'page' ? 'in-out' : 'out')
+    R.fxOn = turn === 'page'
     renderer.setStyles?.(readingCSS(s, themeKey))
     setTimeout(fillMarginals, 300)
   }
@@ -1028,7 +1028,7 @@ function buildAppearanceSheet() {
     el('input', { type: 'radio', name: 'aa-pages', value: key, onchange: () => setSettings({ pages: key }) }),
     el('span', { text: label }))))
   $('#aa-turn').replaceChildren(...Object.entries(TURNS).map(([key, label]) => el('label', {},
-    el('input', { type: 'radio', name: 'aa-turn', value: key, onchange: () => setSettings({ turn: key }) }),
+    el('input', { type: 'radio', name: 'aa-turn', value: key, onchange: () => setSettings({ turn: key, turnChosen: true }) }),
     el('span', { text: label }))))
   for (const r of $$('input[name="aa-flow"]')) r.addEventListener('change', () => setSettings({ flow: r.value }))
 }
@@ -1051,7 +1051,8 @@ function syncAppearanceSheet() {
   $('#aa-margin').value = String(s.margin)
   for (const key of ['justify', 'hyphenate']) $(`#aa-${key}`).checked = s[key]
   for (const r of $$('input[name="aa-pages"]')) r.checked = r.value === s.pages
-  for (const r of $$('input[name="aa-turn"]')) r.checked = r.value === s.turn
+  for (const r of $$('input[name="aa-turn"]')) r.checked = r.value === effectiveTurn(s)
+  $('#aa-turn-note').hidden = !(systemWantsStill() && !s.turnChosen)
   for (const r of $$('input[name="aa-flow"]')) r.checked = r.value === s.flow
   $('#aa-pages-row').hidden = s.flow === 'scrolled'
   $('#aa-turn-row').hidden = s.flow === 'scrolled'

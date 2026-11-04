@@ -29,6 +29,7 @@ export const DEFAULTS = {
   appearance: 'system', // the whole app: system, light or dark
   name: 'Aayush',       // shown on the welcome screen
   turn: 'page',         // how a page change looks: page, slide or none
+  turnChosen: false,    // true once the reader picked a turn style themselves
   theme: 'auto',       // auto = Paper in light mode, Night in dark mode
   font: 'literata',
   size: 19,            // px
@@ -65,6 +66,7 @@ function sanitize(obj) {
     if (typeof obj.name === 'string') s.name = obj.name.replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 24)
     if (has(TURNS, obj.turn)) s.turn = obj.turn
     else if (obj.animate === false) s.turn = 'none' // setting from an earlier version
+    if (typeof obj.turnChosen === 'boolean') s.turnChosen = obj.turnChosen
     if (obj.theme === 'auto' || has(THEMES, obj.theme)) s.theme = obj.theme
     if (has(FONTS, obj.font)) s.font = obj.font
     if (Number.isFinite(obj.size)) s.size = clamp(Math.round(obj.size), ...LIMITS.size)
@@ -82,6 +84,12 @@ function sanitize(obj) {
 // Own keys only, so a stored value like "toString" is not accepted.
 const has = (obj, key) => typeof key === 'string' && Object.hasOwn(obj, key)
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
+
+// Windows, macOS and phones can switch animations off for the whole system, and the
+// browser engine reports that. It sets the starting point only: once the reader
+// picks a turn style in the app, that choice wins.
+export const systemWantsStill = () => matchMedia('(prefers-reduced-motion: reduce)').matches
+export function effectiveTurn(s) { return systemWantsStill() && !s.turnChosen ? 'none' : s.turn }
 
 export function getSettings() {
   return { ...state }

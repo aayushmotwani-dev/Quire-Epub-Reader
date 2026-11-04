@@ -44,7 +44,10 @@ jobs:
         with: { node-version: 22, cache: npm }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 21 }
+      # The runner already has the Android SDK. An empty "packages" skips the extra
+      # sdkmanager install that failed with "Failed to find package 'tools'".
       - uses: android-actions/setup-android@v3
+        with: { packages: '' }
       - run: npm ci
       - run: npx cap sync android
       - name: Build debug APK (signed with a debug key, installs directly)
