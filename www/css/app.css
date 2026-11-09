@@ -1123,3 +1123,49 @@ body { position: relative; }
 .dict-hint { margin-top: 18px; font-size: var(--t-xs); color: var(--ink-2); line-height: 1.55; max-width: 34ch; }
 :root[data-style="typewriter"] .dict-sheet .dict-word { font-family: 'Quire Typewriter', monospace; font-weight: 700; }
 :root[data-style="matrix"] .dict-sheet .dict-word { font-family: var(--dot); font-weight: 900; font-variation-settings: 'ROND' 100; letter-spacing: .02em; }
+
+/* ---------------------------------------------------------------- the book grid
+   Covers stand on a soft ground shadow, lift when pointed at, and carry their
+   own progress: a thin line for a book in progress, a tick for a finished one. */
+.grid { grid-template-columns: repeat(auto-fill, minmax(156px, 1fr)); gap: 48px clamp(22px, 2.8vw, 40px); }
+@media (max-width: 640px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px 18px; } }
+.book { position: relative; }
+.book-open { position: relative; border-radius: 12px; }
+.book-open::after { /* the ground the book stands on */
+  content: ''; position: absolute; left: 7%; right: 7%; bottom: -7px; height: 12px; z-index: -1;
+  background: radial-gradient(ellipse at 50% 0, rgba(0,0,0,.30), transparent 70%);
+  filter: blur(3px); opacity: .55; transition: opacity .3s var(--ease), transform .3s var(--ease);
+}
+:root[data-ui="dark"] .book-open::after { opacity: .9; background: radial-gradient(ellipse at 50% 0, rgba(255,255,255,.07), transparent 70%); }
+@media (prefers-color-scheme: dark) { :root:not([data-ui="light"]) .book-open::after { opacity: .9; background: radial-gradient(ellipse at 50% 0, rgba(255,255,255,.07), transparent 70%); } }
+.cover img, .cover-plain {
+  box-shadow: 0 1px 1px rgba(0,0,0,.12), 0 2px 4px -1px rgba(0,0,0,.14), 0 14px 28px -12px rgba(0,0,0,.40);
+  border-radius: 6px 10px 10px 6px; /* the spine side is squarer, like a real book */
+}
+:root[data-ui="dark"] .cover img, :root[data-ui="dark"] .cover-plain { box-shadow: 0 0 0 .5px rgba(255,255,255,.08), 0 14px 28px -12px rgba(0,0,0,.9); }
+@media (hover: hover) {
+  .book-open:hover .cover img, .book-open:hover .cover-plain { transform: translateY(-5px); box-shadow: 0 1px 1px rgba(0,0,0,.12), 0 6px 10px -2px rgba(0,0,0,.16), 0 22px 36px -14px rgba(0,0,0,.45); }
+  .book-open:hover::after { opacity: .3; transform: scaleX(.88); }
+}
+.cover img, .cover-plain { transition: transform .3s var(--ease), box-shadow .3s var(--ease); }
+.book-title { font-size: var(--t-m); font-weight: 580; letter-spacing: -.005em; margin-top: 2px; }
+.book-meta { margin-top: 16px; }
+.book-sub { margin-top: 4px; align-items: center; }
+.book-status.is-new {
+  padding: 1px 9px; border-radius: 999px; font-weight: 600; font-size: 11.5px; letter-spacing: .02em;
+  background: color-mix(in srgb, var(--signal) 15%, transparent); color: var(--signal-ink);
+}
+.book-bar { display: block; height: 3px; margin-top: 10px; border-radius: 2px; background: var(--hair); overflow: hidden; }
+.book-bar i { display: block; height: 100%; width: calc(var(--p, 0) * 100%); border-radius: 2px; background: var(--signal); }
+.book.is-done .book-open::before { /* finished: a tick in the corner */
+  content: ''; position: absolute; z-index: 2; right: -7px; top: -7px; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--signal) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center / 14px no-repeat;
+  box-shadow: 0 0 0 3px var(--canvas);
+}
+:root[data-accent="blue"][data-ui="light"] .book.is-done .book-open::before, :root[data-accent="graphite"][data-ui="light"] .book.is-done .book-open::before { filter: invert(0); }
+:root[data-corners="square"] .cover img, :root[data-corners="square"] .cover-plain { border-radius: 2px; }
+
+/* the Grid pattern: a fine graph-paper grid with an accent point at every fourth crossing */
+:root[data-pattern="grid"] { --pat-ink: color-mix(in srgb, var(--ink) 11%, transparent); --pat-size: 24px 24px, 24px 24px, 96px 96px;
+  --pat-img: linear-gradient(var(--pat-ink) 1px, transparent 1px), linear-gradient(90deg, var(--pat-ink) 1px, transparent 1px), radial-gradient(circle 2.6px at 0.5px 0.5px, var(--signal) 55%, transparent 100%); }
+:root[data-pattern="grid"] body::before { background-position: 0 0, 0 0, 48px 48px; }
