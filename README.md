@@ -34,6 +34,8 @@ Your books stay on your device. No account, no server, no tracking.
 
 **Make it yours.** Settings, Advanced, has three styles: the clean Quire look, Typewriter (the app and your books set in Courier Prime, as if typed) and Dot matrix (titles and the logo in dots). You can also change the app typeface, the accent colour (orange, red, blue, green or graphite), interface text size, square or round corners, what the bottom of the page shows, which way the left edge turns, and how fast pages turn. Reset puts it all back.
 
+<img src="docs/screenshots/typewriter.png" alt="Typewriter style: the app set in Courier Prime, with the Advanced settings open" width="900">
+
 **Room to read.** Focus mode leaves only the text: no running heads, no page info, no pointer. On a computer, full window hides the title bar too; press Esc, or move to the top edge and click the X, to come back.
 
 ### On your phone
