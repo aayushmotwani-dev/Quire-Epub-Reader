@@ -30,6 +30,8 @@ export const APPEARANCES = { system: 'System', light: 'Light', dark: 'Dark' }
 export const STYLES = { quire: 'Quire', typewriter: 'Typewriter', matrix: 'Dot matrix' }
 export const UI_FONTS = { geist: 'Geist', atkinson: 'Atkinson', typewriter: 'Typewriter', system: 'System' }
 export const ACCENTS = { orange: 'Orange', red: 'Red', blue: 'Blue', green: 'Green', graphite: 'Graphite' }
+export const PATTERNS = { dots: 'Dots', grid: 'Grid', lines: 'Lines', diagonal: 'Diagonal', none: 'None' }
+export const OPEN_ON = { last: 'Where I stopped', library: 'The library' }
 export const CORNERS = { round: 'Round', square: 'Square' }
 export const UI_SIZES = { small: 'Small', default: 'Default', large: 'Large' }
 export const FOOTERS = { full: 'Pages left and percent', pages: 'Pages left in chapter', percent: 'Percent read', time: 'Time left in book', none: 'Nothing' }
@@ -57,13 +59,15 @@ export const DEFAULTS = {
   uiFont: 'geist',     // the interface typeface
   accent: 'orange',
   corners: 'round',
+  openOn: 'last',      // when Quire starts: back into the book, or the library
+  pattern: 'dots',     // the texture behind the home screen
   uiSize: 'default',   // interface text size (the book has its own)
   footer: 'full',      // what the bottom of the page shows
   leftTap: 'back',     // what a tap on the left edge does
   speed: 'normal',     // how fast pages turn
 }
 
-const ADVANCED = { style: STYLES, uiFont: UI_FONTS, accent: ACCENTS, corners: CORNERS, uiSize: UI_SIZES, footer: FOOTERS, leftTap: TAPS, speed: SPEEDS }
+const ADVANCED = { style: STYLES, uiFont: UI_FONTS, accent: ACCENTS, pattern: PATTERNS, openOn: OPEN_ON, corners: CORNERS, uiSize: UI_SIZES, footer: FOOTERS, leftTap: TAPS, speed: SPEEDS }
 
 export const PAGES = { two: 'Two pages', one: 'One page' }
 
@@ -190,6 +194,7 @@ export function applyLook(s = state) {
   d.uiFont = s.uiFont
   d.accent = s.accent
   d.corners = s.corners
+  d.pattern = s.pattern
   d.uiSize = s.uiSize
 }
 

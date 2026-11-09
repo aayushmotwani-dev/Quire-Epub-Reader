@@ -1063,3 +1063,109 @@ body.dragging .drop-overlay { opacity: 1; }
 
 .reset-row .btn { width: 100%; }
 .font-opt[data-font="typewriter"] .font-name { font-family: 'Quire Typewriter', monospace; }
+
+/* ---------------------------------------------------------------- pattern
+   A texture behind the home screen: a band under the header that fades out
+   downward, with a cluster of accent dots in the corner, and kept clear of the cards so text stays easy to read. Settings, Advanced, Pattern. */
+:root { --pat-ink: color-mix(in srgb, var(--ink) 19%, transparent); --pat-size: 14px 14px; --pat-img: radial-gradient(circle 2px at center, var(--pat-ink) 55%, transparent 100%); }
+:root[data-pattern="grid"] { --pat-size: 28px 28px; --pat-img: linear-gradient(var(--pat-ink) 1px, transparent 1px), linear-gradient(90deg, var(--pat-ink) 1px, transparent 1px); }
+:root[data-pattern="lines"] { --pat-size: 100% 22px; --pat-img: linear-gradient(var(--pat-ink) 1px, transparent 1px); }
+:root[data-pattern="diagonal"] { --pat-size: 14px 14px; --pat-img: repeating-linear-gradient(45deg, var(--pat-ink) 0 1px, transparent 1px 10px); }
+:root[data-pattern="none"] { --pat-img: none; }
+
+body:not(.reading)::before, body:not(.reading)::after {
+  content: ''; position: absolute; z-index: -1; left: 0; right: 0; top: 0; height: min(560px, 80vh);
+  pointer-events: none;
+}
+body:not(.reading)::before {
+  background-image: var(--pat-img); background-size: var(--pat-size);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, rgba(0,0,0,.55) 45%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, rgba(0,0,0,.55) 45%, transparent 100%);
+}
+/* accent dots gather in the top right corner, like the full stop of the logo */
+body:not(.reading)::after {
+  background-image: radial-gradient(circle 2.4px at center, var(--signal) 55%, transparent 100%);
+  background-size: 14px 14px;
+  -webkit-mask-image: radial-gradient(ellipse 34% 70% at 100% 0, #000 0, transparent 100%);
+  mask-image: radial-gradient(ellipse 34% 70% at 100% 0, #000 0, transparent 100%);
+  opacity: .8;
+}
+:root:not([data-pattern="dots"]) body::after, :root[data-pattern="none"] body::after { display: none; }
+body { position: relative; }
+.empty { position: relative; }
+
+@media print { body::before, body::after { display: none; } }
+
+/* ---------------------------------------------------------------- dictionary sheet
+   The same card as in a book, set on the page: a large serif word, a search
+   field above it, and your last lookups as chips. */
+.dict-sheet { --pop-accent: var(--signal-ink); --pop-bg: var(--canvas); --pop-ink: var(--ink); --pop-ink2: var(--ink-2); --pop-line: var(--hair); --pop-hover: var(--wash); }
+.dict-search { position: relative; display: flex; align-items: center; margin: 4px 0 14px; }
+.dict-search svg { position: absolute; left: 14px; color: var(--ink-2); pointer-events: none; }
+.dict-search input {
+  width: 100%; height: 50px; padding: 0 16px 0 44px; border: 1px solid transparent; border-radius: 16px;
+  background: var(--wash); font-size: var(--t-m); outline: none;
+  transition: border-color .15s, background-color .15s;
+}
+.dict-search input:focus { border-color: var(--ink); background: var(--canvas); }
+.dict-search input::placeholder { color: var(--ink-2); }
+.dict-recent { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 18px; }
+.dict-recent-label { font-size: var(--t-xs); color: var(--ink-2); margin-right: 2px; }
+.chip { min-height: 32px; padding: 0 14px; border-radius: 999px; background: var(--wash); font-size: var(--t-s); transition: background-color .15s; }
+@media (hover: hover) { .chip:hover { background: var(--hair); } }
+.dict-sheet .dict { width: auto; max-height: none; overflow: visible; padding: 8px 2px 4px; border: 0; }
+.dict-sheet .dict-word { font-size: 38px; letter-spacing: -.02em; }
+.dict-sheet .dict-ipa { font-size: var(--t-m); }
+.dict-sheet .dict-def { font-size: var(--t-m); }
+.dict-sheet .dict-ex { font-size: 15px; }
+.dict-sheet .dict-label { font-size: 17px; }
+.dict-sheet .dict-state { padding: 8px 2px; }
+.dict-hint { margin-top: 18px; font-size: var(--t-xs); color: var(--ink-2); line-height: 1.55; max-width: 34ch; }
+:root[data-style="typewriter"] .dict-sheet .dict-word { font-family: 'Quire Typewriter', monospace; font-weight: 700; }
+:root[data-style="matrix"] .dict-sheet .dict-word { font-family: var(--dot); font-weight: 900; font-variation-settings: 'ROND' 100; letter-spacing: .02em; }
+
+/* ---------------------------------------------------------------- the book grid
+   Covers stand on a soft ground shadow, lift when pointed at, and carry their
+   own progress: a thin line for a book in progress, a tick for a finished one. */
+.grid { grid-template-columns: repeat(auto-fill, minmax(156px, 1fr)); gap: 48px clamp(22px, 2.8vw, 40px); }
+@media (max-width: 640px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px 18px; } }
+.book { position: relative; }
+.book-open { position: relative; border-radius: 12px; }
+.book-open::after { /* the ground the book stands on */
+  content: ''; position: absolute; left: 7%; right: 7%; bottom: -7px; height: 12px; z-index: -1;
+  background: radial-gradient(ellipse at 50% 0, rgba(0,0,0,.30), transparent 70%);
+  filter: blur(3px); opacity: .55; transition: opacity .3s var(--ease), transform .3s var(--ease);
+}
+:root[data-ui="dark"] .book-open::after { opacity: .9; background: radial-gradient(ellipse at 50% 0, rgba(255,255,255,.07), transparent 70%); }
+@media (prefers-color-scheme: dark) { :root:not([data-ui="light"]) .book-open::after { opacity: .9; background: radial-gradient(ellipse at 50% 0, rgba(255,255,255,.07), transparent 70%); } }
+.cover img, .cover-plain {
+  box-shadow: 0 1px 1px rgba(0,0,0,.12), 0 2px 4px -1px rgba(0,0,0,.14), 0 14px 28px -12px rgba(0,0,0,.40);
+  border-radius: 6px 10px 10px 6px; /* the spine side is squarer, like a real book */
+}
+:root[data-ui="dark"] .cover img, :root[data-ui="dark"] .cover-plain { box-shadow: 0 0 0 .5px rgba(255,255,255,.08), 0 14px 28px -12px rgba(0,0,0,.9); }
+@media (hover: hover) {
+  .book-open:hover .cover img, .book-open:hover .cover-plain { transform: translateY(-5px); box-shadow: 0 1px 1px rgba(0,0,0,.12), 0 6px 10px -2px rgba(0,0,0,.16), 0 22px 36px -14px rgba(0,0,0,.45); }
+  .book-open:hover::after { opacity: .3; transform: scaleX(.88); }
+}
+.cover img, .cover-plain { transition: transform .3s var(--ease), box-shadow .3s var(--ease); }
+.book-title { font-size: var(--t-m); font-weight: 580; letter-spacing: -.005em; margin-top: 2px; }
+.book-meta { margin-top: 16px; }
+.book-sub { margin-top: 4px; align-items: center; }
+.book-status.is-new {
+  padding: 1px 9px; border-radius: 999px; font-weight: 600; font-size: 11.5px; letter-spacing: .02em;
+  background: color-mix(in srgb, var(--signal) 15%, transparent); color: var(--signal-ink);
+}
+.book-bar { display: block; height: 3px; margin-top: 10px; border-radius: 2px; background: var(--hair); overflow: hidden; }
+.book-bar i { display: block; height: 100%; width: calc(var(--p, 0) * 100%); border-radius: 2px; background: var(--signal); }
+.book.is-done .book-open::before { /* finished: a tick in the corner */
+  content: ''; position: absolute; z-index: 2; right: -7px; top: -7px; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--signal) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center / 14px no-repeat;
+  box-shadow: 0 0 0 3px var(--canvas);
+}
+:root[data-accent="blue"][data-ui="light"] .book.is-done .book-open::before, :root[data-accent="graphite"][data-ui="light"] .book.is-done .book-open::before { filter: invert(0); }
+:root[data-corners="square"] .cover img, :root[data-corners="square"] .cover-plain { border-radius: 2px; }
+
+/* the Grid pattern: a fine graph-paper grid with an accent point at every fourth crossing */
+:root[data-pattern="grid"] { --pat-ink: color-mix(in srgb, var(--ink) 11%, transparent); --pat-size: 24px 24px, 24px 24px, 96px 96px;
+  --pat-img: linear-gradient(var(--pat-ink) 1px, transparent 1px), linear-gradient(90deg, var(--pat-ink) 1px, transparent 1px), radial-gradient(circle 2.6px at 0.5px 0.5px, var(--signal) 55%, transparent 100%); }
+:root[data-pattern="grid"] body::before { background-position: 0 0, 0 0, 48px 48px; }

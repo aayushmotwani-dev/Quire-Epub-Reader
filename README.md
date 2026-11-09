@@ -26,13 +26,17 @@ Your books stay on your device. No account, no server, no tracking.
 
 <img src="docs/screenshots/define.png" alt="The dictionary card for the word sanity, with highlight colours" width="900">
 
+**A dictionary of its own.** The book icon on the home screen opens the same offline dictionary without a book open: look up any word, hear it, and tap a recent word to see it again.
+
+**Straight back into your book.** Quire reopens the book you were reading on the page you left, with a short welcome. Settings, Advanced, When Quire opens, can send it to the library instead.
+
 **A chapter bar that knows the book.** The bar at the bottom follows the table of contents, with one segment per chapter and wider gaps between parts. Hover or drag to see the page, chapter and part before you jump.
 
 <img src="docs/screenshots/scrubber.png" alt="The chapter bar showing Page 519 of 942 and the chapter name" width="900">
 
 **Reading goals.** Set how many books you want to finish each month and each year. The library shows how far you are, and how many books you are reading now.
 
-**Make it yours.** Settings, Advanced, has three styles: the clean Quire look, Typewriter (the app and your books set in Courier Prime, as if typed) and Dot matrix (titles and the logo in dots). You can also change the app typeface, the accent colour (orange, red, blue, green or graphite), interface text size, square or round corners, what the bottom of the page shows, which way the left edge turns, and how fast pages turn. Reset puts it all back.
+**Make it yours.** Settings, Advanced, has three styles: the clean Quire look, Typewriter (the app and your books set in Courier Prime, as if typed) and Dot matrix (titles and the logo in dots). You can also change the app typeface, the accent colour (orange, red, blue, green or graphite), the pattern behind the home screen (dots, grid, lines or diagonal), interface text size, square or round corners, what the bottom of the page shows, which way the left edge turns, and how fast pages turn. Reset puts it all back.
 
 <img src="docs/screenshots/typewriter.png" alt="Typewriter style: the app set in Courier Prime, with the Advanced settings open" width="900">
 

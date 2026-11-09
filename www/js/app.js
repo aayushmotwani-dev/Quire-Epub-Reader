@@ -1,10 +1,11 @@
 import { initLibrary, refreshLibrary } from './library.js'
-import { initReader, openBook, closeBook, isReading } from './reader.js'
+import { initReader, openBook, closeBook, isReading, dictCard } from './reader.js'
+import { lookup, cleanWord } from './dictionary.js'
 import { importFile, requestPersistence, ImportError } from './importer.js'
 import { openDB } from './db.js'
 import { $, $$, el, toast, showSheet, closeSheet, handleSheetPop, isSheetOpen, confirmDialog } from './ui.js'
 import { getFlag, setFlag, getSettings, setSettings, onSettings, applyAppMode, applyLook, onSystemThemeChange, setStyle, resetSettings,
-  APPEARANCES, STYLES, UI_FONTS, ACCENTS, CORNERS, UI_SIZES, FOOTERS, TAPS, SPEEDS } from './settings.js'
+  APPEARANCES, OPEN_ON, STYLES, UI_FONTS, ACCENTS, PATTERNS, CORNERS, UI_SIZES, FOOTERS, TAPS, SPEEDS } from './settings.js'
 
 const splashStart = performance.now()
 
@@ -27,9 +28,11 @@ async function route() {
   if (r.name === 'read') {
     showView('reader')
     const ok = await openBook(r.id)
-    if (!ok) { location.replace('#/'); return }
+    if (!ok) { setFlag('resume', null); location.replace('#/'); return }
+    setFlag('resume', r.id)   // fast resume: reopen this book next time
   } else {
     if (isReading()) await closeBook()
+    setFlag('resume', null)
     showView('library')
     await refreshLibrary()
   }
@@ -251,7 +254,8 @@ async function hideSplash() {
   const splash = $('#splash')
   if (!splash) return
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
-  const minimum = reduced ? 400 : 1700 // long enough to read, short enough not to nag
+  const back = Date.now() - getFlag('lastSeen', 0) < 30 * 60 * 1000 // closed less than 30 minutes ago
+  const minimum = reduced ? 400 : back ? 600 : 1700 // long enough to read, short enough not to nag
   await new Promise(r => setTimeout(r, Math.max(0, minimum - (performance.now() - splashStart))))
   splash.classList.add('done')
   setTimeout(() => splash.remove(), 700)
@@ -289,6 +293,8 @@ function initSettingsSheet() {
     el('input', { type: 'radio', name: 'set-accent', value: key, onchange: () => setSettings({ accent: key }) }),
     el('span', { class: 'accent-dot', 'aria-hidden': 'true' }),
     el('span', { class: 'accent-name', text: label }))))
+  radios($('#set-pattern'), 'set-pattern', PATTERNS, v => setSettings({ pattern: v }))
+  radios($('#set-open-on'), 'set-open-on', OPEN_ON, v => setSettings({ openOn: v }))
   radios($('#set-ui-size'), 'set-ui-size', UI_SIZES, v => setSettings({ uiSize: v }))
   radios($('#set-corners'), 'set-corners', CORNERS, v => setSettings({ corners: v }))
   radios($('#set-left-tap'), 'set-left-tap', TAPS, v => setSettings({ leftTap: v }))
@@ -306,7 +312,7 @@ function initSettingsSheet() {
     if (ok) { resetSettings(); toast('Settings reset') }
   })
 
-  const RADIOS = { 'set-appearance': 'appearance', 'set-style': 'style', 'set-ui-font': 'uiFont', 'set-accent': 'accent',
+  const RADIOS = { 'set-appearance': 'appearance', 'set-style': 'style', 'set-ui-font': 'uiFont', 'set-accent': 'accent', 'set-pattern': 'pattern', 'set-open-on': 'openOn',
     'set-ui-size': 'uiSize', 'set-corners': 'corners', 'set-left-tap': 'leftTap', 'set-speed': 'speed' }
   const sync = () => {
     const s = getSettings()
@@ -320,7 +326,47 @@ function initSettingsSheet() {
   $('#open-settings').addEventListener('click', () => showSheet('sheet-settings'))
 }
 
+// ---------------------------------------------------------------- dictionary
+
+function initDictionary() {
+  const input = $('#dict-input'), result = $('#dict-result'), recent = $('#dict-recent'), hint = $('#dict-hint')
+  let token = 0
+  const recents = () => { const v = getFlag('dictRecent', []); return Array.isArray(v) ? v.filter(x => typeof x === 'string').slice(0, 8) : [] }
+  const drawRecent = () => {
+    const list = recents()
+    recent.hidden = !list.length
+    recent.replaceChildren(...(list.length ? [el('span', { class: 'dict-recent-label', text: 'Recent' }),
+      ...list.map(w => el('button', { type: 'button', class: 'chip', text: w, onclick: () => { input.value = w; search(w) } }))] : []))
+  }
+  async function search(raw) {
+    const my = ++token
+    const word = cleanWord(raw)
+    if (!word) { result.replaceChildren(); hint.hidden = false; return }
+    hint.hidden = true
+    const entry = await lookup(word).catch(() => null)
+    if (my !== token) return
+    if (!entry) { result.replaceChildren(el('p', { class: 'dict-state' }, 'Type a single word or a short phrase.')); return }
+    result.replaceChildren(dictCard(entry))
+    if (entry.found) {
+      setFlag('dictRecent', [entry.word, ...recents().filter(w => w !== entry.word)].slice(0, 8))
+      drawRecent()
+    }
+  }
+  $('#dict-form').addEventListener('submit', e => { e.preventDefault(); search(input.value) })
+  let timer = 0
+  input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => search(input.value), 320) })
+  $('#open-dict').addEventListener('click', () => {
+    showSheet('sheet-dict')
+    drawRecent()
+    setTimeout(() => input.focus(), 320)
+  })
+}
+
 // ---------------------------------------------------------------- boot
+
+const markSeen = () => setFlag('lastSeen', Date.now())
+window.addEventListener('pagehide', markSeen)
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') markSeen() })
 
 async function boot() {
   applyAppMode()
@@ -349,6 +395,7 @@ async function boot() {
   onSystemThemeChange(() => { if (!isReading()) applyAppMode() })
   onSettings(() => { if (!isReading()) applyAppMode(); else applyLook() })
   initSettingsSheet()
+  initDictionary()
 
   initDrop()
   initFileHandling()
@@ -356,9 +403,14 @@ async function boot() {
   initFullWindow()
   initNativeStatusBar()
 
+  // Fast resume: start inside the book that was open when Quire was closed.
+  const resumeId = getFlag('resume')
+  if (!location.hash && getSettings().openOn === 'last' && typeof resumeId === 'string' && /^[A-Za-z0-9._-]{1,200}$/.test(resumeId))
+    history.replaceState(history.state, '', `#/read/${resumeId}`)
   if (!location.hash) history.replaceState(history.state, '', '#/')
   await route()
   hideSplash()
+  markSeen()
   initNativeOpen() // last, so the library is ready for a book that launched the app
 }
 

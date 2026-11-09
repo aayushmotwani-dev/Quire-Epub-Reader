@@ -274,14 +274,15 @@ function renderShelf() {
     grid.replaceChildren(el('li', { class: 'no-match', text: `Nothing matches “${query}”.` }))
     return
   }
-  grid.replaceChildren(...list.map(book => el('li', { class: 'book' },
+  grid.replaceChildren(...list.map(book => el('li', { class: 'book' + (isFinished(book) ? ' is-done' : ''), style: `--p:${Math.max(0, Math.min(1, book.progress || 0))}` },
     el('button', { type: 'button', class: 'book-open', 'aria-label': `Open ${book.title}`, onclick: () => handlers.open(book.id) }, cover(book)),
     el('div', { class: 'book-meta' },
       el('p', { class: 'book-title', text: book.title, title: book.title }),
       iconButton('more', `More for ${book.title}`, e => openMenu(e.currentTarget, book), { class: 'book-more' })),
     el('p', { class: 'book-sub' },
       el('span', { class: 'book-author', text: book.author || 'Unknown author' }),
-      el('span', { class: 'book-status' + (!book.openedAt ? ' is-new' : ''), text: statusText(book) })))))
+      el('span', { class: 'book-status' + (!book.openedAt ? ' is-new' : ''), text: statusText(book) })),
+    (book.openedAt && !isFinished(book) && book.progress > 0.005) ? el('span', { class: 'book-bar', 'aria-hidden': 'true' }, el('i')) : null)))
 }
 
 function openMenu(anchor, book) {
