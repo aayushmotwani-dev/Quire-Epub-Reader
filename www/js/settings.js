@@ -22,7 +22,7 @@ export const FONTS = {
 // Side margin as a percentage of the page width, per step of the slider.
 export const MARGINS = [3, 5, 7, 9, 12]
 
-export const TURNS = { page: 'Page turn', slide: 'Slide', none: 'None' }
+export const TURNS = { slide: 'Slide', page: 'Curl', none: 'None' }
 export const APPEARANCES = { system: 'System', light: 'Light', dark: 'Dark' }
 
 export const DEFAULTS = {
@@ -37,6 +37,7 @@ export const DEFAULTS = {
   margin: 2,           // index into MARGINS
   justify: true,
   hyphenate: true,
+  focus: false,        // focus mode: nothing on the page but the text
   flow: 'paginated',   // or 'scrolled'
   pages: 'two',        // 'two' = a spread on wide windows, 'one' = one page filling the window
 }
@@ -72,7 +73,7 @@ function sanitize(obj) {
     if (Number.isFinite(obj.size)) s.size = clamp(Math.round(obj.size), ...LIMITS.size)
     if (Number.isFinite(obj.lineHeight)) s.lineHeight = clamp(Math.round(obj.lineHeight * 100) / 100, ...LIMITS.lineHeight)
     if (Number.isInteger(obj.margin)) s.margin = clamp(obj.margin, 0, MARGINS.length - 1)
-    for (const k of ['justify', 'hyphenate'])
+    for (const k of ['justify', 'hyphenate', 'focus'])
       if (typeof obj[k] === 'boolean') s[k] = obj[k]
     if (has(PAGES, obj.pages)) s.pages = obj.pages
     else if (obj.spread === false) s.pages = 'one' // setting from an earlier version
@@ -82,8 +83,9 @@ function sanitize(obj) {
 }
 
 // Own keys only, so a stored value like "toString" is not accepted.
-const has = (obj, key) => typeof key === 'string' && Object.hasOwn(obj, key)
-const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
+// (Function declarations, so they exist before the saved settings are read.)
+function has(obj, key) { return typeof key === 'string' && Object.hasOwn(obj, key) }
+function clamp(v, min, max) { return Math.min(max, Math.max(min, v)) }
 
 // Windows, macOS and phones can switch animations off for the whole system, and the
 // browser engine reports that. It sets the starting point only: once the reader

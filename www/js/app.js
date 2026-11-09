@@ -166,6 +166,48 @@ function initNativeOpen() {
   app.addListener('appUrlOpen', e => open(e?.url))
 }
 
+// Full window on the desktop: no title bar, no minimise or close buttons.
+// Esc leaves it, and so does the X that slides down when the pointer reaches
+// the top edge. F11 or the button in the library (and in a book) enters it.
+function initFullWindow() {
+  const pill = $('#fw-exit')
+  const can = document.fullscreenEnabled && !matchMedia('(pointer: coarse)').matches
+  $('#lib-full').hidden = !can
+  if (!can) return
+  const toggle = () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+    else document.documentElement.requestFullscreen().catch(() => {})
+  }
+  $('#lib-full').addEventListener('click', toggle)
+  document.addEventListener('keydown', e => { if (e.key === 'F11') { e.preventDefault(); toggle() } })
+  pill.addEventListener('click', () => document.exitFullscreen().catch(() => {}))
+  let timer = 0
+  const show = (ms = 0) => {
+    clearTimeout(timer)
+    pill.hidden = false
+    requestAnimationFrame(() => pill.classList.add('on'))
+    if (ms) timer = setTimeout(hide, ms)
+  }
+  const hide = () => {
+    clearTimeout(timer)
+    pill.classList.remove('on')
+    timer = setTimeout(() => { if (!pill.classList.contains('on')) pill.hidden = true }, 260)
+  }
+  document.addEventListener('fullscreenchange', () => {
+    const on = !!document.fullscreenElement
+    $('#lib-full').setAttribute('aria-label', on ? 'Leave full window' : 'Full window')
+    if (on) show(2600) // a first hint of the way out
+    else { clearTimeout(timer); pill.classList.remove('on'); pill.hidden = true }
+  })
+  const near = y => {
+    if (!document.fullscreenElement) return
+    if (y < 40) show()
+    else if (y > 120 && pill.classList.contains('on') && !pill.matches(':hover')) { clearTimeout(timer); timer = setTimeout(hide, 700) }
+  }
+  document.addEventListener('mousemove', e => near(e.clientY))
+  window.addEventListener('quire-pointer', e => near(e.detail)) // from inside a book's pages
+}
+
 function initIOSHint() {
   const ua = navigator.userAgent
   const iOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
@@ -266,6 +308,7 @@ async function boot() {
   initDrop()
   initFileHandling()
   initIOSHint()
+  initFullWindow()
   initNativeStatusBar()
 
   if (!location.hash) history.replaceState(history.state, '', '#/')

@@ -286,6 +286,9 @@ class View {
     }
     render(layout) {
         if (!layout) return
+        // Quire: a page that is being replaced (fast turns across chapters)
+        // can be asked to lay out before or after it has a body. Skip it.
+        if (!this.document?.body) return
         this.#column = layout.flow !== 'scrolled'
         this.#layout = layout
         if (this.#column) this.columnize(layout)
@@ -954,6 +957,9 @@ export class Paginator extends HTMLElement {
             this.start - size, this.end - size, this.#getRectMapper())
     }
     #afterScroll(reason) {
+        // Quire: during fast turns across chapters the page may be gone or
+        // not have a body yet; there is nothing to report until it does.
+        if (!this.#view?.document?.body) return
         const range = this.#getVisibleRange()
         this.#lastVisibleRange = range
         // don't set new anchor if relocation was to scroll to anchor

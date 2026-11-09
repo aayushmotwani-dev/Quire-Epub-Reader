@@ -7,4 +7,6 @@ contextBridge.exposeInMainWorld('quireNative', {
     ipcRenderer.on('open-book', (_e, { name, data }) => callback({ name, data }))
   },
   setChromeColor(color) { ipcRenderer.send('chrome-color', color) },
+  // A JPEG of part of the window, for the page flip. Resolves to bytes or null.
+  capturePage(rect) { return ipcRenderer.invoke('capture-page', rect) },
 })

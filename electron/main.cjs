@@ -118,3 +118,27 @@ ipcMain.on('chrome-color', (_e, color) => {
   if (!win || typeof color !== 'string' || !/^#[0-9a-f]{6}$/i.test(color)) return
   win.setBackgroundColor(color)
 })
+
+// Page flip: the reader asks for a picture of the page it is showing, then
+// turns that picture over while the real next page is already underneath.
+// Only the app's own page may ask, and only for a part of its own window.
+ipcMain.handle('capture-page', async (e, rect) => {
+  if (!win || e.sender !== win.webContents) return null
+  if (!String(e.senderFrame?.url ?? '').startsWith('app://quire/')) return null
+  if (!rect || typeof rect !== 'object') return null
+  const nums = [rect.x, rect.y, rect.width, rect.height]
+  if (!nums.every(n => typeof n === 'number' && Number.isFinite(n))) return null
+  const [cw, ch] = win.getContentSize()
+  const x = Math.max(0, Math.min(cw - 1, Math.round(rect.x)))
+  const y = Math.max(0, Math.min(ch - 1, Math.round(rect.y)))
+  const width = Math.max(1, Math.min(cw - x, Math.round(rect.width)))
+  const height = Math.max(1, Math.min(ch - y, Math.round(rect.height)))
+  try {
+    const image = await win.webContents.capturePage({ x, y, width, height })
+    if (image.isEmpty()) return null
+    return image.toJPEG(92)
+  } catch {
+    return null
+  }
+})
+

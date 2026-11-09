@@ -30,6 +30,7 @@ export function readingCSS(s, themeKey) {
   const before = `
     @namespace epub "http://www.idpf.org/2007/ops";
     html { color-scheme: ${t.dark ? 'dark' : 'light'}; }
+    html.q-idle, html.q-idle * { cursor: none !important; } /* focus mode, pointer resting */
     p, li, blockquote, dd { widows: 2; orphans: 2; }
     pre { white-space: pre-wrap !important; }
   `

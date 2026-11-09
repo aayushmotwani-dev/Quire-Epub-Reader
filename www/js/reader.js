@@ -10,6 +10,7 @@ import { lookup, lookupable, speak, canSpeak } from './dictionary.js'
 import { el, $, $$, ICONS, iconButton, toast, showSheet, closeSheet, isSheetOpen, openSheetId, noteDialog, langMap, formatMinutes, isTouch, isCompact } from './ui.js'
 import { fillSegBar } from './library.js'
 import { exportHighlights } from './export.js'
+import { canFlip, flipPage, isFlipping, warmUpCurl } from './pageflip.js'
 
 export const HIGHLIGHT_COLORS = {
   yellow: { label: 'Yellow', value: '#f2c94c' },
@@ -37,10 +38,18 @@ export function initReader({ exit }) {
   $('#r-full').hidden = !document.fullscreenEnabled || isTouch()
 
   const scrub = $('#r-scrub')
-  scrub.addEventListener('input', () => previewScrub(parseFloat(scrub.value)))
-  scrub.addEventListener('change', () => commitScrub(parseFloat(scrub.value)))
-  scrub.addEventListener('pointerdown', () => R && (R.scrubbing = true))
-  scrub.addEventListener('blur', () => R && (R.scrubbing = false))
+  scrub.addEventListener('input', () => { previewScrub(parseFloat(scrub.value)); showScrubTip(parseFloat(scrub.value)) })
+  scrub.addEventListener('change', () => { commitScrub(parseFloat(scrub.value)); hideScrubTip(700) })
+  scrub.addEventListener('pointerdown', () => { if (R) { R.scrubbing = true; showScrubTip(parseFloat(scrub.value)) } })
+  for (const type of ['pointerup', 'pointercancel']) scrub.addEventListener(type, () => hideScrubTip(700))
+  scrub.addEventListener('blur', () => { if (R) R.scrubbing = false; hideScrubTip(0) })
+  // With a mouse, hovering over the bar shows where each point would take you.
+  scrub.addEventListener('pointermove', e => {
+    if (!R || e.pointerType !== 'mouse' || e.buttons) return
+    const r = scrub.getBoundingClientRect(), thumb = 18
+    showScrubTip((e.clientX - r.left - thumb / 2) / (r.width - thumb))
+  })
+  scrub.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !R?.scrubbing) hideScrubTip(0) })
 
   $('#search-form').addEventListener('submit', e => { e.preventDefault(); runSearch($('#search-input').value) })
   $('#search-input').addEventListener('input', e => { if (!e.target.value) clearSearch() })
@@ -165,6 +174,7 @@ function wireView(view) {
   // Clicks on the page margins (outside the book's iframe) land here.
   view.addEventListener('click', e => onTap(e.clientX, null, undefined, e.detail))
   view.addEventListener('wheel', onWheel, { passive: false })
+  installSwipeFlip(view, document) // swipes on the page margins, outside the book's frame
   view.addEventListener('load', e => onSectionLoad(e.detail))
   view.addEventListener('relocate', e => onRelocate(e.detail))
   view.addEventListener('create-overlay', e => {
@@ -200,6 +210,8 @@ function wireView(view) {
 
 function onSectionLoad({ doc, index }) {
   R.docs.set(index, doc)
+  installSwipeFlip(doc.defaultView, doc)
+  if (canFlip() && !R.curlReady) { R.curlReady = true; setTimeout(warmUpCurl, 600) } // so the first flip starts at once
   doc.addEventListener('keydown', onKey)
   doc.addEventListener('click', e => {
     const frame = doc.defaultView.frameElement?.getBoundingClientRect()
@@ -222,11 +234,13 @@ function onSectionLoad({ doc, index }) {
 
 function applySettings() {
   const s = getSettings()
+  if (R) R.pageStats = null // font, size or margins may have changed: measure pages again
   const themeKey = resolveThemeKey(s)
   const vars = themeVars(themeKey)
   const reader = $('#reader')
   for (const [k, v] of Object.entries(vars)) reader.style.setProperty(k, v)
   reader.dataset.pageTheme = themeKey
+  reader.classList.toggle('focus', !!s.focus)
   reader.dataset.dark = THEMES[themeKey].dark ? 'true' : 'false'
   // Sheets and dialogs take the page's light or dark, not the device's.
   const root = document.documentElement
@@ -247,7 +261,7 @@ function applySettings() {
     renderer.setAttribute('max-column-count', s.pages === 'one' ? '1' : '2')
     const turn = effectiveTurn(s)
     renderer.toggleAttribute('animated', turn !== 'none')
-    // "Page turn" is slower and eases in and out, with a shadow along the moving edge.
+    // "Page flip" without a page picture (a browser): a slower slide with a shadow along the moving edge.
     renderer.setAttribute('turn-duration', turn === 'page' ? '520' : '300')
     renderer.setAttribute('turn-ease', turn === 'page' ? 'in-out' : 'out')
     R.fxOn = turn === 'page'
@@ -321,10 +335,11 @@ function onRelocate(detail) {
   $('#r-total').textContent = time?.total ? `${formatMinutes(time.total)} left in book` : ''
   if (!R.scrubbing) {
     $('#r-scrub').value = String(fraction)
-    fillSegBar($('#r-segbar'), R.marks, fraction)
+    fillSegBar($('#r-segbar'), R.marks, fraction, { parts: R.partMarks })
   }
   $('#r-scrub').setAttribute('aria-valuetext', `${pct}%${chapter ? ', ' + chapter : ''}`)
 
+  samplePages()
   R.marginal = { chapter, pct, leftInChapter, hasPages: pagesLeft != null }
   fillMarginals()
 
@@ -341,6 +356,7 @@ function fillMarginals() {
   if (!m) return
   const renderer = R.view.renderer
   const heads = renderer.heads ?? [], feet = renderer.feet ?? []
+  if (getSettings().focus) { for (const x of [...heads, ...feet]) x.textContent = ''; return } // focus mode: text only
   if (heads.length === 1) heads[0].textContent = m.chapter || R.record.title
   else if (heads.length > 1) { heads[0].textContent = R.record.title; heads[heads.length - 1].textContent = m.chapter }
   if (feet.length === 1) feet[0].textContent = m.hasPages ? m.leftInChapter : `${m.pct}%`
@@ -358,6 +374,10 @@ async function saveProgress(now = false) {
   const { cfi, fraction } = R.location
   if (!cfi) return
   const patch = { cfi, progress: fraction ?? 0, chapter: R.chapter || '', openedAt: Date.now() }
+  const perPage = measuredPageSize()
+  if (perPage) patch.pageSize = { layout: layoutKey(), perPage: Math.round(perPage) }
+  // Reaching the end counts the book as read (for the reading goal).
+  if ((fraction ?? 0) >= 0.995 && !(R.record.finishedAt > 0)) patch.finishedAt = Date.now()
   R.record = { ...R.record, ...patch }
   try { await db.updateBook(R.id, patch) } catch { /* storage full or blocked: keep reading */ }
 }
@@ -367,13 +387,99 @@ async function saveProgress(now = false) {
 // Every page turn the reader makes goes through here.
 function turn(where) {
   if (!R) return
+  // Presses during a flip are kept (up to four) and done straight after it,
+  // as quicker flips, so quick readers do not lose turns.
+  if (isFlipping()) { if ((R.queuedTurns ??= []).length < 4) R.queuedTurns.push(where); return }
   if (!$('#r-jump').hidden && ++R.jumpTurns > 3) hideJump()
-  R.view[where]()
+  if (shouldFlip(where)) flipTurn(where)
+  else R.view[where]()
+}
+
+// With Page flip on a phone, a sideways swipe flips the page instead of
+// dragging it. The listener runs before the engine's own (capture phase on the
+// window), so the engine never starts its drag. Taps, long presses (selecting
+// text), pinch zoom and scroll mode are left alone.
+function installSwipeFlip(target, doc) {
+  if (!target || target.quireSwipe) return
+  target.quireSwipe = true
+  let start = null
+  const active = () => R && canFlip() && R.fxOn && !R.view.isFixedLayout && !R.view.renderer.scrolled && R.book.dir !== 'rtl'
+  target.addEventListener('touchstart', e => {
+    start = e.touches.length === 1 && active()
+      ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: e.timeStamp, moved: false }
+      : null
+  }, { capture: true, passive: true })
+  target.addEventListener('touchmove', e => {
+    if (!start || e.touches.length !== 1 || (globalThis.visualViewport?.scale ?? 1) > 1) { start = null; return }
+    const sel = doc?.getSelection?.()
+    if (sel && !sel.isCollapsed) { start = null; return } // extending a text selection
+    const dx = e.touches[0].clientX - start.x, dy = e.touches[0].clientY - start.y
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) start.moved = true
+    e.stopPropagation() // keep the engine from dragging the page
+    if (Math.abs(dx) > Math.abs(dy)) e.preventDefault()
+  }, { capture: true, passive: false })
+  target.addEventListener('touchend', e => {
+    const s = start
+    start = null
+    if (!s) return
+    // The engine snaps the page back into place after every touch, with an
+    // animation that would undo the flip's move. It never dragged, so it has
+    // nothing to snap: keep the end of the touch from it.
+    e.stopPropagation()
+    if (!s.moved) return // a tap: the click handler turns the page
+    const t = e.changedTouches[0]
+    const dx = t.clientX - s.x, dy = t.clientY - s.y
+    if (Math.abs(dx) > 34 && Math.abs(dx) > Math.abs(dy) * 1.3 && e.timeStamp - s.t < 900) {
+      if (R?.chromeOn) setChrome(false)
+      turn(dx < 0 ? 'goRight' : 'goLeft')
+    }
+  }, { capture: true })
+}
+
+// The desktop and phone apps can turn the page over like paper (see pageflip.js).
+function shouldFlip(where) {
+  if (!canFlip() || !R.fxOn) return false
+  const r = R.view.renderer
+  if (R.view.isFixedLayout || r.scrolled || R.book.dir === 'rtl') return false
+  if (R.chromeOn || !$('#sel-pop').hidden || isSheetOpen() || document.querySelector('dialog[open]')) return false
+  if ((globalThis.visualViewport?.scale ?? 1) !== 1) return false // pinch-zoomed: the picture would not line up
+  const forward = where === 'next' || where === 'goRight'
+  return !(forward ? r.atEnd : r.atStart) // nothing to turn to: let the engine decide
+}
+
+async function flipTurn(where) {
+  const reader = R
+  const r = reader.view.renderer
+  const box = r.getBoundingClientRect()
+  const size = r.size
+  const theme = THEMES[resolveThemeKey(getSettings())]
+  let moved = false
+  try {
+    await flipPage({
+      rect: { left: box.left + (box.width - size) / 2, top: box.top, width: size, height: box.height },
+      columns: Math.max(1, Math.min(2, r.heads?.length || 1)),
+      forward: where === 'next' || where === 'goRight',
+      paper: theme.bg,
+      dark: !!theme.dark,
+      host: $('#reader'),
+      quick: !!reader.queuedTurns?.length,
+      perform: async () => {
+        const animated = r.hasAttribute('animated')
+        r.removeAttribute('animated')
+        moved = true
+        try { await reader.view[where]() } finally { r.toggleAttribute('animated', animated) }
+      },
+    })
+  } catch { /* fall through */ }
+  // The flip could not start (no picture): turn the usual way. Never turn twice.
+  if (!moved && R === reader) reader.view[where]()
+  if (R === reader && reader.queuedTurns?.length) turn(reader.queuedTurns.shift())
 }
 
 function setChrome(on) {
   if (!R) return
   clearTimeout(R.hideTimer)
+  if (on) setIdle(false)
   R.chromeOn = on
   $('#reader').classList.toggle('chrome-on', on)
   $('#r-top').inert = !on
@@ -409,13 +515,29 @@ function onTap(x, target, doc, detail = 1) {
 
 let hoverShown = false
 function onPointerMove(y) {
-  if (!R || isTouch() || isSheetOpen()) return
+  wakePointer()
+  window.dispatchEvent(new CustomEvent('quire-pointer', { detail: y })) // full window: the X at the top
+  // Focus mode: the menu only comes with a click in the middle (or Esc / Space-free keys).
+  if (!R || isTouch() || isSheetOpen() || getSettings().focus) return
   const h = window.innerHeight
   const nearEdge = y < 72 || y > h - 96
   if (nearEdge && !R.chromeOn) { hoverShown = true; setChrome(true) }
   else if (!nearEdge && R.chromeOn && hoverShown) { hoverShown = false; R.hideTimer = setTimeout(() => setChrome(false), 500) }
 }
 document.addEventListener('mousemove', e => { if (R && e.target.closest?.('#reader')) onPointerMove(e.clientY) })
+
+// Focus mode hides the mouse pointer while you read; any movement brings it back.
+let idleTimer = 0
+function wakePointer() {
+  clearTimeout(idleTimer)
+  setIdle(false)
+  if (R && getSettings().focus && !isTouch()) idleTimer = setTimeout(() => setIdle(true), 2200)
+}
+function setIdle(on) {
+  if (!R) return
+  $('#reader').classList.toggle('idle', on && !R.chromeOn && !isSheetOpen())
+  for (const doc of R.docs?.values?.() ?? []) doc.documentElement?.classList.toggle('q-idle', on && !R.chromeOn && !isSheetOpen())
+}
 
 let wheelAcc = 0, wheelLock = 0
 function onWheel(e) {
@@ -439,6 +561,8 @@ function onKey(e) {
   const mod = e.ctrlKey || e.metaKey
   if (mod && e.key.toLowerCase() === 'f') { e.preventDefault(); openSearch(); return }
   if (e.key === 'Escape') {
+    // Esc leaves full window first (the browser does it); it must not also close the book.
+    if (document.fullscreenElement || performance.now() - fullscreenLeftAt < 500) { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); return }
     if (!$('#sel-pop').hidden) { hideSelectionPop(); return }
     if (isSheetOpen() || document.querySelector('dialog[open]')) return // the sheet handles it
     if (R.chromeOn) { setChrome(false); return }
@@ -461,6 +585,9 @@ function onKey(e) {
   }
 }
 
+let fullscreenLeftAt = -1e9
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) fullscreenLeftAt = performance.now() })
+
 function toggleFullscreen() {
   if (!document.fullscreenEnabled) return
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
@@ -480,7 +607,7 @@ function syncFullscreenIcon() {
 function previewScrub(f) {
   if (!R) return
   R.scrubbing = true
-  fillSegBar($('#r-segbar'), R.marks, f)
+  fillSegBar($('#r-segbar'), R.marks, f, { parts: R.partMarks })
   $('#r-pct').textContent = `${Math.floor(f * 100)}%`
   $('#r-chapter').textContent = chapterAt(f) || R.chapter || ''
 }
@@ -492,30 +619,160 @@ async function commitScrub(f) {
 }
 
 // Top-level chapters as fractions of the book, for the segmented bar.
+// Chapters and parts from the book's own table of contents, as fractions of
+// the book, for the segmented bar and the label above it. A book with parts
+// ("Part One", each holding chapters) gets wider gaps between its parts.
 function chapterMarks() {
   const { view, book } = R
   const fractions = view.getSectionFractions()
   let items = book.toc ?? []
-  if (items.length <= 2 && items[0]?.subitems?.length > 2) items = items.flatMap(i => [i, ...(i.subitems ?? [])])
-  const marks = []
-  R.chapterIndex = []
-  for (const item of items) {
+  // One entry wrapping everything (often the book's own title): look inside.
+  for (let i = 0; i < 3 && items.length === 1 && items[0].subitems?.length > 1; i++) items = items[0].subitems
+  const where = item => {
     try {
       const { index } = view.resolveNavigation(item.href) ?? {}
-      if (Number.isInteger(index) && fractions[index] != null) {
-        marks.push(fractions[index])
-        R.chapterIndex.push({ fraction: fractions[index], label: item.label?.trim() })
-      }
-    } catch { /* unresolvable entry */ }
+      return Number.isInteger(index) && fractions[index] != null ? fractions[index] : null
+    } catch { return null } // unresolvable entry
   }
+  // An entry is a part when its chapters start in at least two different
+  // files. Entries whose sub-entries are only headings inside one file are
+  // chapters, and their headings are left out.
+  const spread = item => new Set((item.subitems ?? []).map(where).filter(x => x != null)).size
+  const hasParts = items.length >= 2 && items.filter(i => spread(i) >= 2).length >= 2
+  if (!hasParts && items.length <= 2 && items[0] && spread(items[0]) > 2) items = items.flatMap(i => [i, ...(i.subitems ?? [])])
+  const marks = [], parts = []
+  R.chapterIndex = []
+  for (const item of items) {
+    const label = item.label?.trim() || ''
+    const f = where(item)
+    if (hasParts && spread(item) >= 2) {
+      const starts = item.subitems.map(where).filter(x => x != null)
+      const partStart = f ?? (starts.length ? Math.min(...starts) : null)
+      if (partStart == null) continue
+      parts.push(partStart)
+      R.chapterIndex.push({ fraction: partStart, label, part: label })
+      for (const sub of item.subitems) {
+        const sf = where(sub)
+        if (sf == null) continue
+        marks.push(sf)
+        R.chapterIndex.push({ fraction: sf, label: sub.label?.trim() || '', part: label })
+      }
+    } else if (f != null) {
+      marks.push(f)
+      R.chapterIndex.push({ fraction: f, label, part: null })
+    }
+  }
+  // Several entries in one file: the first names it (the chapter, not its
+  // last heading). A part's own entry gives way to its first chapter.
+  const seen = new Map()
+  for (const c of R.chapterIndex) {
+    const key = c.fraction.toFixed(6)
+    const prev = seen.get(key)
+    if (!prev || (prev.label === prev.part && c.label !== c.part)) seen.set(key, c)
+  }
+  R.chapterIndex = [...seen.values()]
   R.chapterIndex.sort((a, b) => a.fraction - b.fraction)
+  R.partMarks = parts
   return marks
 }
 
+// The entry (chapter, and its part) at fraction f.
+function entryAt(f) {
+  let hit = null
+  for (const c of R.chapterIndex ?? []) { if (c.fraction <= f + 1e-6) hit = c; else break }
+  return hit
+}
+
+// ---------------------------------------------------------------- page numbers
+// A book file has no fixed pages, so Quire counts them from the layout on
+// screen: how much of the book fits on one page here, measured in the
+// chapters you have read. Like any e-reader, the count changes with the font
+// size. Fixed-layout books (comics, picture books) count one page per page.
+
+function linearSize(s) { return s && s.linear !== 'no' && s.size > 0 ? s.size : 0 }
+
+function samplePages() {
+  const r = R?.view?.renderer
+  if (!r || R.view.isFixedLayout || r.scrolled || !Number.isFinite(r.pages)) return
+  const size = linearSize(R.book.sections?.[R.sectionIndex])
+  // The engine adds a blank page at each end; a spread is two pages.
+  const pages = (r.pages - 2) * Math.max(1, Math.min(2, r.heads?.length || 1))
+  // Short pieces (a title page, a dedication) say little about a full page.
+  if (!(size > 0) || pages < 3) return
+  ;(R.pageStats ??= new Map()).set(R.sectionIndex, [size, pages])
+}
+
+function pageAt(f) {
+  const sections = R.book.sections ?? []
+  if (R.view.isFixedLayout) {
+    const fractions = R.view.getSectionFractions?.() ?? []
+    const total = Math.max(1, sections.filter(linearSize).length || sections.length)
+    let i = 0
+    while (i + 1 < fractions.length && fractions[i + 1] <= f + 1e-9) i++
+    return { page: Math.min(total, i + 1), total }
+  }
+  let size = 0, pages = 0
+  for (const [s, p] of R.pageStats?.values() ?? []) { size += s; pages += p }
+  // Until a chapter has been measured: about 1,800 letters to a page, using
+  // how much of this file is text (books full of formulas or markup have far
+  // fewer letters per byte). Never an absurd value either way.
+  let guess = 2400
+  const remembered = R.record?.pageSize
+  const doc = R.docs?.get(R.sectionIndex)
+  const fileSize = linearSize(sections[R.sectionIndex])
+  const letters = doc?.body?.textContent?.length ?? 0
+  if (fileSize > 2000 && letters > 200) guess = 1800 * (fileSize / letters)
+  // The size measured last time with the same layout is better than a guess.
+  if (remembered?.layout === layoutKey() && remembered.perPage > 0) guess = remembered.perPage
+  const perPage = Math.max(600, Math.min(40000, pages ? size / pages : guess))
+  const total = Math.max(1, Math.round(sections.reduce((a, s) => a + linearSize(s), 0) / perPage))
+  return { page: Math.min(total, Math.floor(f * total) + 1), total }
+}
+
+// Pages depend on the font, size, spacing, margins, page mode and window.
+function layoutKey() {
+  const s = getSettings()
+  return [s.font, s.size, s.lineHeight, s.margin, s.pages, s.flow, Math.round(innerWidth / 40), Math.round(innerHeight / 40)].join('|')
+}
+function measuredPageSize() {
+  let size = 0, pages = 0
+  for (const [s, p] of R?.pageStats?.values() ?? []) { size += s; pages += p }
+  return pages >= 6 ? size / pages : 0
+}
+
+let tipTimer = 0
+function showScrubTip(f) {
+  if (!R || !Number.isFinite(f)) return
+  f = Math.max(0, Math.min(1, f))
+  clearTimeout(tipTimer)
+  const tip = $('#scrub-tip')
+  const { page, total } = pageAt(f)
+  const entry = entryAt(f)
+  const part = entry?.part && entry.part !== entry.label ? entry.part : ''
+  $('#scrub-part').textContent = part
+  $('#scrub-page').textContent = `Page ${page}`
+  $('#scrub-total').textContent = `of ${total}`
+  $('#scrub-chapter').textContent = entry?.label || ''
+  tip.hidden = false
+  // Above the point, kept inside the bar.
+  const w = $('#r-scrub').clientWidth, thumb = 18
+  const x = thumb / 2 + f * (w - thumb)
+  const half = tip.offsetWidth / 2
+  tip.style.left = `${Math.max(half, Math.min(w - half, x))}px`
+  // Light up the chapter under the point.
+  for (const seg of $('#r-segbar').children) seg.classList.toggle('hot', f >= +seg.dataset.start && f < +seg.dataset.end + (seg.dataset.end === '1' ? 1e-9 : 0))
+  $('#r-scrub').setAttribute('aria-valuetext', `Page ${page} of ${total}${entry?.label ? ', ' + entry.label : ''}${part ? ', ' + part : ''}`)
+}
+function hideScrubTip(delay = 0) {
+  clearTimeout(tipTimer)
+  tipTimer = setTimeout(() => {
+    $('#scrub-tip').hidden = true
+    for (const seg of $('#r-segbar').children) seg.classList.remove('hot')
+  }, delay)
+}
+
 function chapterAt(f) {
-  let label = ''
-  for (const c of R.chapterIndex ?? []) { if (c.fraction <= f + 1e-6) label = c.label; else break }
-  return label
+  return entryAt(f)?.label || ''
 }
 
 // ---------------------------------------------------------------- jump back
@@ -1022,14 +1279,17 @@ function buildAppearanceSheet() {
   mg.max = MARGINS.length - 1
   mg.addEventListener('input', () => setSettings({ margin: parseInt(mg.value, 10) }))
 
-  for (const key of ['justify', 'hyphenate'])
+  for (const key of ['justify', 'hyphenate', 'focus'])
     $(`#aa-${key}`).addEventListener('change', e => setSettings({ [key]: e.target.checked }))
   $('#aa-pages').replaceChildren(...Object.entries(PAGES).map(([key, label]) => el('label', {},
     el('input', { type: 'radio', name: 'aa-pages', value: key, onchange: () => setSettings({ pages: key }) }),
     el('span', { text: label }))))
-  $('#aa-turn').replaceChildren(...Object.entries(TURNS).map(([key, label]) => el('label', {},
+  const turnIcons = { slide: 'turnSlide', page: 'turnCurl', none: 'turnNone' }
+  $('#aa-turn').replaceChildren(...Object.entries(TURNS).map(([key, label]) => el('label', { class: 'menu-row' },
     el('input', { type: 'radio', name: 'aa-turn', value: key, onchange: () => setSettings({ turn: key, turnChosen: true }) }),
-    el('span', { text: label }))))
+    el('span', { class: 'menu-check', icon: 'check' }),
+    el('span', { class: 'menu-label', text: label }),
+    el('span', { class: 'menu-icon', icon: turnIcons[key] }))))
   for (const r of $$('input[name="aa-flow"]')) r.addEventListener('change', () => setSettings({ flow: r.value }))
 }
 
@@ -1049,7 +1309,7 @@ function syncAppearanceSheet() {
   $('#aa-line').value = String(s.lineHeight)
   $('#aa-line-val').textContent = s.lineHeight.toFixed(2)
   $('#aa-margin').value = String(s.margin)
-  for (const key of ['justify', 'hyphenate']) $(`#aa-${key}`).checked = s[key]
+  for (const key of ['justify', 'hyphenate', 'focus']) $(`#aa-${key}`).checked = s[key]
   for (const r of $$('input[name="aa-pages"]')) r.checked = r.value === s.pages
   for (const r of $$('input[name="aa-turn"]')) r.checked = r.value === effectiveTurn(s)
   $('#aa-turn-note').hidden = !(systemWantsStill() && !s.turnChosen)

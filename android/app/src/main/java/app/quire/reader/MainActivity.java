@@ -3,10 +3,19 @@ package app.quire.reader;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        // Quire's own native helper (the page flip picture) must be known
+        // before Capacitor starts.
+        registerPlugin(PageSnapshotPlugin.class);
+        super.onCreate(savedInstanceState);
+    }
 
     // "Share" > Quire sends ACTION_SEND with the file in EXTRA_STREAM, while
     // "Open with" sends ACTION_VIEW with the file as the data. Capacitor's App

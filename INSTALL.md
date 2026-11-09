@@ -53,10 +53,22 @@ Paid Apple Developer ($99 per year) removes the weekly step; ask me and I will s
 - Not yet tested on a real iPhone, Android phone, Mac or installed Windows PC.
 - The dictionary is English only and works fully offline (Princeton WordNet and the CMU Pronouncing Dictionary, about 20 MB inside the app).
   It has meanings, examples, similar words and pronunciation, but no word origins. Their license texts are in `www/dict/`; keep them if you share the app.
-- The page turn is a soft shadow sweeping across the page, not a full 3D curl. It is off in scroll mode.
-  If Windows has animations switched off (Settings, Accessibility, Visual effects, Animation effects), Quire starts with no page turn.
-  Open **Aa** and choose **Page turn** to turn it on inside Quire.
-- On iPhone the system's own text menu may appear next to the dictionary card; this is untested on a real device.
+- **Aa > Turning pages**: **Curl**, **Slide** or **None**. Curl lifts the page by its corner and rolls it over, like Apple Books,
+  on Windows, Mac, iPhone and Android (arrow keys, clicking or tapping the page edges, the mouse wheel, and swiping on phones).
+  It slides instead in scroll mode, for right-to-left books, while the toolbar or a menu is open, when the page is zoomed,
+  and on Android phones older than Android 8. Devices without WebGL get a simpler 3D page turn.
+  If Windows has animations switched off (Settings, Accessibility, Visual effects, Animation effects), Quire starts with no page turn;
+  open **Aa** and choose **Curl** or **Slide** to turn it on inside Quire.
+  The phones take a picture of the page with a small piece of native code. It is built but not yet tested on a real phone;
+  if a picture fails three times in a row, Quire slides the page for that session.
+- The bar at the bottom of a book follows its table of contents: one segment per chapter, with wider gaps between parts.
+  Hover over it with the mouse, or drag it with a finger, to see the page, the chapter and the part. Pages are counted from
+  the layout on your screen, so the count changes with the font size; Quire remembers it for each book once it has measured a few chapters.
+- **Focus mode** (Aa): only the text, with no running heads, page info, ribbon or mouse pointer. Click or tap the middle of the page for the menu.
+- **Full window** (Windows and Mac): press **F11**, the frame button in the library, or **F** in a book. Press **Esc**, or move the mouse to the
+  top edge and click the **X** that slides down, to get the title bar and window buttons back.
+- **Reading goal** on the home screen: tap **Change** to pick books a month or a year. A book counts when you reach its end,
+  or when you choose **Mark as finished** in its menu (the three dots).
 
 ## 4. Before you publish or share anything
 

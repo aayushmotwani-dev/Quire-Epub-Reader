@@ -64,9 +64,21 @@ function hash(s) {
   return Math.abs(h)
 }
 
+// A book is finished when the reader reached its end (finishedAt is the time)
+// or marked it so. finishedAt 0 means it was marked not finished. Books from
+// before this was recorded count as finished at their last opening.
+export function isFinished(book) {
+  if (book.finishedAt > 0) return true
+  return book.finishedAt === undefined && book.progress >= 0.995
+}
+function finishedTime(book) {
+  if (book.finishedAt > 0) return book.finishedAt
+  return isFinished(book) ? book.openedAt || book.addedAt || 0 : 0
+}
+
 function statusText(book) {
+  if (isFinished(book)) return 'Finished'
   if (!book.openedAt) return 'New'
-  if (book.progress >= 0.995) return 'Finished'
   return `${Math.floor(book.progress * 100)}%`
 }
 
@@ -74,14 +86,87 @@ function render() {
   const has = books.length > 0
   $('#empty').hidden = has
   $('#shelf').hidden = !has
+  renderGoal()
   renderHero()
   renderShelf()
+}
+
+// ---------------------------------------------------------------- reading goal
+
+const PERIODS = { month: 'Month', year: 'Year' }
+export function getGoal() {
+  const g = getFlag('goal', null)
+  const period = g && Object.hasOwn(PERIODS, g.period) ? g.period : 'month'
+  const target = g && Number.isInteger(g.target) && g.target >= 1 && g.target <= 365 ? g.target : (period === 'year' ? 12 : 2)
+  return { period, target }
+}
+
+function periodStart(period, now = new Date()) {
+  return period === 'year'
+    ? new Date(now.getFullYear(), 0, 1).getTime()
+    : new Date(now.getFullYear(), now.getMonth(), 1).getTime()
+}
+
+function renderGoal() {
+  const host = $('#goal')
+  host.hidden = books.length === 0
+  if (host.hidden) return host.replaceChildren()
+  const { period, target } = getGoal()
+  const now = new Date()
+  const done = books.filter(b => finishedTime(b) >= periodStart(period, now)).length
+  const reading = books.filter(b => b.openedAt && !isFinished(b) && b.progress > 0.005).length
+  const yearDone = books.filter(b => finishedTime(b) >= periodStart('year', now)).length
+  const label = period === 'year' ? `in ${now.getFullYear()}` : `in ${now.toLocaleDateString(undefined, { month: 'long' })}`
+  const reached = done >= target
+  // One segment per book while the goal is small enough to count at a glance.
+  const bar = el('div', { class: 'goal-bar' + (target > 24 ? ' smooth' : ''), role: 'progressbar',
+    'aria-label': 'Reading goal', 'aria-valuemin': '0', 'aria-valuemax': String(target), 'aria-valuenow': String(Math.min(done, target)) })
+  if (target > 24) bar.append(el('span', { class: 'goal-fill', style: `--fill:${Math.min(1, done / target).toFixed(4)}` }))
+  else for (let i = 0; i < target; i++) bar.append(el('span', { class: 'goal-seg' + (i < done ? ' on' : '') }))
+  host.replaceChildren(
+    el('div', { class: 'goal-head' },
+      el('h2', { id: 'goal-title', class: 'goal-title', text: 'Reading goal' }),
+      el('button', { type: 'button', class: 'goal-edit', text: 'Change', onclick: editGoal })),
+    el('p', { class: 'goal-count' },
+      el('span', { class: 'dot-number goal-done', text: String(done) }),
+      el('span', { class: 'goal-of', text: ` of ${target} ${target === 1 ? 'book' : 'books'} ${label}` })),
+    bar,
+    el('p', { class: 'goal-note', text: reached ? 'Goal reached. Well read.' : `${target - done} to go` }),
+    el('dl', { class: 'goal-stats' },
+      el('div', {}, el('dt', { text: 'Reading now' }), el('dd', { text: String(reading) })),
+      el('div', {}, el('dt', { text: `Finished in ${now.getFullYear()}` }), el('dd', { text: String(yearDone) }))))
+}
+
+function editGoal() {
+  const dlg = $('#goal-dialog')
+  let { period, target } = getGoal()
+  const num = $('#goal-number')
+  const sync = () => {
+    num.textContent = String(target)
+    $('#goal-unit').textContent = `${target === 1 ? 'book' : 'books'} a ${period}`
+    $('#goal-less').disabled = target <= 1
+    $('#goal-more').disabled = target >= 365
+    for (const r of document.querySelectorAll('input[name="goal-period"]')) r.checked = r.value === period
+  }
+  for (const r of document.querySelectorAll('input[name="goal-period"]')) r.onchange = () => { period = r.value; sync() }
+  $('#goal-less').onclick = () => { target = Math.max(1, target - 1); sync() }
+  $('#goal-more').onclick = () => { target = Math.min(365, target + 1); sync() }
+  const finish = save => {
+    dlg.close()
+    if (save) { setFlag('goal', { period, target }); renderGoal() }
+  }
+  $('#goal-save').onclick = () => finish(true)
+  $('#goal-cancel').onclick = () => finish(false)
+  dlg.oncancel = e => { e.preventDefault(); finish(false) }
+  sync()
+  dlg.showModal()
+  $('#goal-save').focus()
 }
 
 function renderHero() {
   const host = $('#now')
   const current = books
-    .filter(b => b.openedAt && b.progress < 0.995)
+    .filter(b => b.openedAt && !isFinished(b))
     .sort((a, b) => b.openedAt - a.openedAt)[0]
   host.hidden = !current
   if (!current) return host.replaceChildren()
@@ -108,13 +193,17 @@ export function segBar(marks, progress, { interactive = false } = {}) {
   return bar
 }
 
-export function fillSegBar(bar, marks, progress) {
-  const bounds = normalizeMarks(marks)
+export function fillSegBar(bar, marks, progress, { parts = [] } = {}) {
+  const partSet = (parts ?? []).filter(x => Number.isFinite(x) && x > 0 && x < 1).map(x => Math.round(x * 1e4) / 1e4)
+  const bounds = normalizeMarks([...(Array.isArray(marks) ? marks : []), ...partSet], partSet)
   const frag = document.createDocumentFragment()
   for (let i = 0; i < bounds.length - 1; i++) {
     const start = bounds[i], end = bounds[i + 1]
     const fill = Math.max(0, Math.min(1, (progress - start) / (end - start)))
-    const seg = el('span', { class: 'seg', style: `flex-grow:${(end - start).toFixed(5)};--fill:${fill.toFixed(4)}` })
+    const isPartStart = i > 0 && partSet.includes(start)
+    const seg = el('span', { class: 'seg' + (isPartStart ? ' part-start' : ''), style: `flex-grow:${(end - start).toFixed(5)};--fill:${fill.toFixed(4)}` })
+    seg.dataset.start = String(start)
+    seg.dataset.end = String(end)
     frag.append(seg)
   }
   bar.replaceChildren(frag)
@@ -125,13 +214,18 @@ export function fillSegBar(bar, marks, progress) {
 }
 
 // Too many tiny segments read as noise; merge until each is visible.
-function normalizeMarks(marks) {
+// Part boundaries (`keep`) always stay.
+function normalizeMarks(marks, keep = []) {
   let m = Array.isArray(marks) ? marks.filter(x => Number.isFinite(x) && x > 0 && x < 1) : []
   m = [0, ...new Set(m.map(x => Math.round(x * 1e4) / 1e4)), 1].sort((a, b) => a - b)
   const minGap = 0.012
   const out = [0]
-  for (const x of m.slice(1)) if (x - out[out.length - 1] >= minGap || x === 1) out.push(x)
-  if (out.length > 2 && out[out.length - 1] - out[out.length - 2] < minGap) out.splice(out.length - 2, 1)
+  for (const x of m.slice(1)) {
+    const last = out[out.length - 1]
+    if (x === 1 || x - last >= minGap) out.push(x)
+    else if (keep.includes(x) && !keep.includes(last) && out.length > 1) out[out.length - 1] = x // a part start wins over a chapter
+  }
+  if (out.length > 2 && out[out.length - 1] - out[out.length - 2] < minGap && !keep.includes(out[out.length - 2])) out.splice(out.length - 2, 1)
   return out
 }
 
@@ -167,7 +261,14 @@ function openMenu(anchor, book) {
   const menu = $('#book-menu')
   if (!menu.hidden && menu.dataset.id === book.id) return closeMenu()
   menu.dataset.id = book.id
+  const finished = isFinished(book)
   menu.replaceChildren(
+    el('button', { type: 'button', role: 'menuitem', icon: finished ? 'minus' : 'check', onclick: async () => {
+      closeMenu()
+      await db.updateBook(book.id, { finishedAt: finished ? 0 : Date.now() })
+      await refreshLibrary()
+      toast(finished ? 'Marked as not finished' : 'Marked as finished')
+    } }, el('span', { text: finished ? 'Mark as not finished' : 'Mark as finished' })),
     el('button', { type: 'button', role: 'menuitem', icon: 'export', onclick: async () => { closeMenu(); await exportHighlights(book) } }, el('span', { text: 'Export highlights' })),
     el('button', { type: 'button', role: 'menuitem', class: 'danger', icon: 'trash', onclick: async () => { closeMenu(); await removeBook(book) } }, el('span', { text: 'Remove from library' })))
   menu.hidden = false

@@ -37,6 +37,9 @@
   <header class="lib-head">
     <h1 id="wordmark" class="wordmark">quire</h1>
     <div class="lib-actions">
+      <button type="button" id="lib-full" class="icon-btn" aria-label="Full window" title="Full window (F11)" hidden>
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15"/></svg>
+      </button>
       <button type="button" id="open-settings" class="icon-btn" aria-label="Settings" title="Settings">
         <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4.5 8h9M17.5 8h2M4.5 16h2M10.5 16h9"/><circle cx="15.5" cy="8" r="2"/><circle cx="8.5" cy="16" r="2"/></svg>
       </button>
@@ -53,6 +56,8 @@
       <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
   </p>
+
+  <section id="goal" class="goal" aria-labelledby="goal-title" hidden></section>
 
   <section id="now" class="now" aria-label="Continue reading" hidden></section>
 
@@ -123,6 +128,11 @@
     <div class="scrub">
       <div id="r-segbar" class="segbar" aria-hidden="true"></div>
       <input id="r-scrub" type="range" min="0" max="1" step="0.0005" value="0" aria-label="Position in book">
+      <div id="scrub-tip" class="scrub-tip" aria-hidden="true" hidden>
+        <span id="scrub-part" class="tip-part"></span>
+        <p class="tip-page"><span id="scrub-page" class="tip-num"></span><span id="scrub-total" class="tip-total"></span></p>
+        <span id="scrub-chapter" class="tip-chapter"></span>
+      </div>
     </div>
     <div class="r-row r-row-quiet">
       <p id="r-pct"></p>
@@ -188,10 +198,11 @@
       </fieldset>
       <label class="row switch-row"><span>Justify text</span><input type="checkbox" id="aa-justify" class="switch"></label>
       <label class="row switch-row"><span>Hyphenation</span><input type="checkbox" id="aa-hyphenate" class="switch"></label>
+      <label class="row switch-row focus-row"><span><span class="switch-title">Focus mode</span><span class="switch-sub">Only the text: no running heads, page info, ribbon or pointer. Tap or click the middle of the page for the menu.</span></span><input type="checkbox" id="aa-focus" class="switch"></label>
       <fieldset class="row turn-row" id="aa-turn-row">
         <legend>Turning pages</legend>
-        <div class="segmented" id="aa-turn"></div>
-        <p class="sheet-note" id="aa-turn-note" hidden>Your system has animations switched off, so pages turn without them. Choose Page turn to use them in Quire.</p>
+        <div class="menu-list" id="aa-turn"></div>
+        <p class="sheet-note" id="aa-turn-note" hidden>Your system has animations switched off, so pages turn without them. Choose Curl or Slide to use them in Quire.</p>
       </fieldset>
     </div>
     <p class="fixed-only sheet-note">This book has a fixed layout, so only the page theme applies.</p>
@@ -261,12 +272,39 @@
   </div>
 </aside>
 
+<!-- Full window (desktop): slides down when the pointer reaches the top edge. -->
+<button type="button" id="fw-exit" class="fw-exit" aria-label="Leave full window" hidden>
+  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  <span>Leave full window</span><kbd>Esc</kbd>
+</button>
+
 <dialog id="confirm" class="dialog">
   <h2 id="confirm-title"></h2>
   <p id="confirm-body"></p>
   <div class="dialog-actions">
     <button type="button" id="confirm-cancel" class="btn btn-quiet">Cancel</button>
     <button type="button" id="confirm-ok" class="btn btn-solid"></button>
+  </div>
+</dialog>
+
+<dialog id="goal-dialog" class="dialog goal-dialog" aria-labelledby="goal-dialog-title">
+  <h2 id="goal-dialog-title">Reading goal</h2>
+  <fieldset class="goal-period">
+    <legend class="sr">Goal for each</legend>
+    <div class="segmented">
+      <label><input type="radio" name="goal-period" value="month"><span>Month</span></label>
+      <label><input type="radio" name="goal-period" value="year"><span>Year</span></label>
+    </div>
+  </fieldset>
+  <div class="goal-stepper">
+    <button type="button" id="goal-less" class="icon-btn stepper-btn" aria-label="Fewer books"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+    <p class="goal-target"><span id="goal-number" class="dot-number">2</span><span id="goal-unit">books a month</span></p>
+    <button type="button" id="goal-more" class="icon-btn stepper-btn" aria-label="More books"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+  </div>
+  <p class="goal-help">A book counts when you reach its end, or mark it finished from its menu in the library.</p>
+  <div class="dialog-actions">
+    <button type="button" id="goal-cancel" class="btn btn-quiet">Cancel</button>
+    <button type="button" id="goal-save" class="btn btn-solid">Save</button>
   </div>
 </dialog>
 

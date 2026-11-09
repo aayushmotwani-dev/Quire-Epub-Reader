@@ -25,6 +25,9 @@ export const ICONS = {
   minus: svg('<path d="M5 12h14"/>'),
   noteAdd: svg('<path d="M14 3.5H7.5a1.7 1.7 0 0 0-1.7 1.7v13.6a1.7 1.7 0 0 0 1.7 1.7h9a1.7 1.7 0 0 0 1.7-1.7V8z"/><path d="M14 3.5V8h4.2M12 11.5v5M9.5 14h5"/>'),
   define: svg('<path d="M12 6.2C10.3 5 8 4.6 4.5 4.8v12.4c3.5-.2 5.8.2 7.5 1.4 1.7-1.2 4-1.6 7.5-1.4V4.8c-3.5-.2-5.8.2-7.5 1.4zM12 6.2v12.4"/>'),
+  turnSlide: svg('<rect x="4.5" y="4.5" width="15" height="15" rx="2.5"/><path d="M15 4.5v15M11.5 9.5L9 12l2.5 2.5M9 12h4"/>'),
+  turnCurl: svg('<path d="M6.5 4.5h11v9.5l-5.5 5.5h-5.5z"/><path d="M17.5 14H13a1 1 0 0 0-1 1v4.5"/>'),
+  turnNone: svg('<rect x="4.5" y="4.5" width="15" height="15" rx="2.5"/><path d="M12.8 7.5L10 12.4h4l-2.8 4.6"/>'),
   speaker: svg('<path d="M5 9.5h3l4.5-3.5v12L8 14.5H5z"/><path d="M15.8 9.2a4 4 0 0 1 0 5.6M18.3 6.7a7.5 7.5 0 0 1 0 10.6"/>'),
 }
 
