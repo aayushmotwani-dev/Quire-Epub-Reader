@@ -61,7 +61,10 @@ export function readingCSS(s, themeKey) {
     body { font-family: ${font.family} !important; }
     body :where(:not(code, pre, kbd, samp, tt, var, math, math *, svg, svg *)) { font-family: inherit !important; }
     ` : ''}
-    body { font-optical-sizing: auto; }
+    body { font-optical-sizing: auto; font-size: 1em !important; }
+    /* Some books fix their text size in px or pt, which would ignore the size
+       chosen in Aa. Body text follows the reader's size; headings keep theirs. */
+    body :where(p, li, blockquote, dd, dt, td, th, figcaption, div:not(:has(p, li, blockquote, h1, h2, h3, h4, h5, h6, table))) { font-size: 1em !important; }
     p, li, blockquote, dd, dt, td {
       line-height: ${s.lineHeight} !important;
       text-align: ${s.justify ? 'justify' : 'start'};
