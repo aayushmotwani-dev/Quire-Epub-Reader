@@ -288,20 +288,18 @@
 </dialog>
 
 <dialog id="goal-dialog" class="dialog goal-dialog" aria-labelledby="goal-dialog-title">
-  <h2 id="goal-dialog-title">Reading goal</h2>
-  <fieldset class="goal-period">
-    <legend class="sr">Goal for each</legend>
-    <div class="segmented">
-      <label><input type="radio" name="goal-period" value="month"><span>Month</span></label>
-      <label><input type="radio" name="goal-period" value="year"><span>Year</span></label>
-    </div>
-  </fieldset>
+  <h2 id="goal-dialog-title">Reading goals</h2>
   <div class="goal-stepper">
-    <button type="button" id="goal-less" class="icon-btn stepper-btn" aria-label="Fewer books"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
-    <p class="goal-target"><span id="goal-number" class="dot-number">2</span><span id="goal-unit">books a month</span></p>
-    <button type="button" id="goal-more" class="icon-btn stepper-btn" aria-label="More books"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button type="button" id="goal-month-less" class="icon-btn stepper-btn" aria-label="Fewer books a month"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+    <p class="goal-target"><span id="goal-month" class="dot-number">1</span><span id="goal-month-unit">books a month</span></p>
+    <button type="button" id="goal-month-more" class="icon-btn stepper-btn" aria-label="More books a month"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
   </div>
-  <p class="goal-help">A book counts when you reach its end, or mark it finished from its menu in the library.</p>
+  <div class="goal-stepper">
+    <button type="button" id="goal-year-less" class="icon-btn stepper-btn" aria-label="Fewer books a year"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+    <p class="goal-target"><span id="goal-year" class="dot-number">1</span><span id="goal-year-unit">books a year</span></p>
+    <button type="button" id="goal-year-more" class="icon-btn stepper-btn" aria-label="More books a year"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+  </div>
+  <p class="goal-help">Your year goal can't be lower than your month goal. A book counts when you reach its end, or mark it finished from its menu in the library.</p>
   <div class="dialog-actions">
     <button type="button" id="goal-cancel" class="btn btn-quiet">Cancel</button>
     <button type="button" id="goal-save" class="btn btn-solid">Save</button>

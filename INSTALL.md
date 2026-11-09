@@ -67,7 +67,7 @@ Paid Apple Developer ($99 per year) removes the weekly step; ask me and I will s
 - **Focus mode** (Aa): only the text, with no running heads, page info, ribbon or mouse pointer. Click or tap the middle of the page for the menu.
 - **Full window** (Windows and Mac): press **F11**, the frame button in the library, or **F** in a book. Press **Esc**, or move the mouse to the
   top edge and click the **X** that slides down, to get the title bar and window buttons back.
-- **Reading goal** on the home screen: tap **Change** to pick books a month or a year. A book counts when you reach its end,
+- **Reading goals** on the home screen: tap **Change** to set books a month and books a year (the year goal can't be lower than the month goal). A book counts when you reach its end,
   or when you choose **Mark as finished** in its menu (the three dots).
 
 ## 4. Before you publish or share anything
@@ -75,7 +75,7 @@ Paid Apple Developer ($99 per year) removes the weekly step; ask me and I will s
 - There are no API keys in this project. If you ever add one, put it in `.env` (already in `.gitignore`).
 - `.gitignore` keeps secrets and build output out of Git.
 - The installers only contain `electron/`, `www/` and `package.json` (see `build.files` in `package.json`).
-  `INSTALL.md`, `.github/`, `resources/` and `node_modules/` are not packaged.
+  `README.md`, `INSTALL.md`, `docs/`, `.github/`, `resources/` and `node_modules/` are not packaged.
   Check this list if you change that setting.
 
 ## Developing
