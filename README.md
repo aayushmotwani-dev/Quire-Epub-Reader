@@ -32,7 +32,7 @@ Your books stay on your device. No account, no server, no tracking.
 
 **Reading goals.** Set how many books you want to finish each month and each year. The library shows how far you are, and how many books you are reading now.
 
-**Make it yours.** Settings, Advanced, has three styles: the clean Quire look, Typewriter (the app and your books set in Courier Prime, as if typed) and Dot matrix (titles and the logo in dots). You can also change the app typeface, the accent colour (orange, red, blue, green or graphite), interface text size, square or round corners, what the bottom of the page shows, which way the left edge turns, and how fast pages turn. Reset puts it all back.
+**Make it yours.** Settings, Advanced, has three styles: the clean Quire look, Typewriter (the app and your books set in Courier Prime, as if typed) and Dot matrix (titles and the logo in dots). You can also change the app typeface, the accent colour (orange, red, blue, green or graphite), the pattern behind the home screen (dots, grid, lines or diagonal), interface text size, square or round corners, what the bottom of the page shows, which way the left edge turns, and how fast pages turn. Reset puts it all back.
 
 <img src="docs/screenshots/typewriter.png" alt="Typewriter style: the app set in Courier Prime, with the Advanced settings open" width="900">
 

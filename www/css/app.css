@@ -1063,3 +1063,35 @@ body.dragging .drop-overlay { opacity: 1; }
 
 .reset-row .btn { width: 100%; }
 .font-opt[data-font="typewriter"] .font-name { font-family: 'Quire Typewriter', monospace; }
+
+/* ---------------------------------------------------------------- pattern
+   A texture behind the home screen: a band under the header that fades out
+   downward, with a cluster of accent dots in the corner, and kept clear of the cards so text stays easy to read. Settings, Advanced, Pattern. */
+:root { --pat-ink: color-mix(in srgb, var(--ink) 19%, transparent); --pat-size: 14px 14px; --pat-img: radial-gradient(circle 2px at center, var(--pat-ink) 55%, transparent 100%); }
+:root[data-pattern="grid"] { --pat-size: 28px 28px; --pat-img: linear-gradient(var(--pat-ink) 1px, transparent 1px), linear-gradient(90deg, var(--pat-ink) 1px, transparent 1px); }
+:root[data-pattern="lines"] { --pat-size: 100% 22px; --pat-img: linear-gradient(var(--pat-ink) 1px, transparent 1px); }
+:root[data-pattern="diagonal"] { --pat-size: 14px 14px; --pat-img: repeating-linear-gradient(45deg, var(--pat-ink) 0 1px, transparent 1px 10px); }
+:root[data-pattern="none"] { --pat-img: none; }
+
+body:not(.reading)::before, body:not(.reading)::after {
+  content: ''; position: absolute; z-index: -1; left: 0; right: 0; top: 0; height: min(560px, 80vh);
+  pointer-events: none;
+}
+body:not(.reading)::before {
+  background-image: var(--pat-img); background-size: var(--pat-size);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, rgba(0,0,0,.55) 45%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, rgba(0,0,0,.55) 45%, transparent 100%);
+}
+/* accent dots gather in the top right corner, like the full stop of the logo */
+body:not(.reading)::after {
+  background-image: radial-gradient(circle 2.4px at center, var(--signal) 55%, transparent 100%);
+  background-size: 14px 14px;
+  -webkit-mask-image: radial-gradient(ellipse 34% 70% at 100% 0, #000 0, transparent 100%);
+  mask-image: radial-gradient(ellipse 34% 70% at 100% 0, #000 0, transparent 100%);
+  opacity: .8;
+}
+:root:not([data-pattern="dots"]) body::after, :root[data-pattern="none"] body::after { display: none; }
+body { position: relative; }
+.empty { position: relative; }
+
+@media print { body::before, body::after { display: none; } }

@@ -4,7 +4,7 @@ import { importFile, requestPersistence, ImportError } from './importer.js'
 import { openDB } from './db.js'
 import { $, $$, el, toast, showSheet, closeSheet, handleSheetPop, isSheetOpen, confirmDialog } from './ui.js'
 import { getFlag, setFlag, getSettings, setSettings, onSettings, applyAppMode, applyLook, onSystemThemeChange, setStyle, resetSettings,
-  APPEARANCES, STYLES, UI_FONTS, ACCENTS, CORNERS, UI_SIZES, FOOTERS, TAPS, SPEEDS } from './settings.js'
+  APPEARANCES, STYLES, UI_FONTS, ACCENTS, PATTERNS, CORNERS, UI_SIZES, FOOTERS, TAPS, SPEEDS } from './settings.js'
 
 const splashStart = performance.now()
 
@@ -289,6 +289,7 @@ function initSettingsSheet() {
     el('input', { type: 'radio', name: 'set-accent', value: key, onchange: () => setSettings({ accent: key }) }),
     el('span', { class: 'accent-dot', 'aria-hidden': 'true' }),
     el('span', { class: 'accent-name', text: label }))))
+  radios($('#set-pattern'), 'set-pattern', PATTERNS, v => setSettings({ pattern: v }))
   radios($('#set-ui-size'), 'set-ui-size', UI_SIZES, v => setSettings({ uiSize: v }))
   radios($('#set-corners'), 'set-corners', CORNERS, v => setSettings({ corners: v }))
   radios($('#set-left-tap'), 'set-left-tap', TAPS, v => setSettings({ leftTap: v }))
@@ -306,7 +307,7 @@ function initSettingsSheet() {
     if (ok) { resetSettings(); toast('Settings reset') }
   })
 
-  const RADIOS = { 'set-appearance': 'appearance', 'set-style': 'style', 'set-ui-font': 'uiFont', 'set-accent': 'accent',
+  const RADIOS = { 'set-appearance': 'appearance', 'set-style': 'style', 'set-ui-font': 'uiFont', 'set-accent': 'accent', 'set-pattern': 'pattern',
     'set-ui-size': 'uiSize', 'set-corners': 'corners', 'set-left-tap': 'leftTap', 'set-speed': 'speed' }
   const sync = () => {
     const s = getSettings()
