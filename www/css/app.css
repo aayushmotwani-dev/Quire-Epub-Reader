@@ -1095,3 +1095,31 @@ body { position: relative; }
 .empty { position: relative; }
 
 @media print { body::before, body::after { display: none; } }
+
+/* ---------------------------------------------------------------- dictionary sheet
+   The same card as in a book, set on the page: a large serif word, a search
+   field above it, and your last lookups as chips. */
+.dict-sheet { --pop-accent: var(--signal-ink); --pop-bg: var(--canvas); --pop-ink: var(--ink); --pop-ink2: var(--ink-2); --pop-line: var(--hair); --pop-hover: var(--wash); }
+.dict-search { position: relative; display: flex; align-items: center; margin: 4px 0 14px; }
+.dict-search svg { position: absolute; left: 14px; color: var(--ink-2); pointer-events: none; }
+.dict-search input {
+  width: 100%; height: 50px; padding: 0 16px 0 44px; border: 1px solid transparent; border-radius: 16px;
+  background: var(--wash); font-size: var(--t-m); outline: none;
+  transition: border-color .15s, background-color .15s;
+}
+.dict-search input:focus { border-color: var(--ink); background: var(--canvas); }
+.dict-search input::placeholder { color: var(--ink-2); }
+.dict-recent { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 18px; }
+.dict-recent-label { font-size: var(--t-xs); color: var(--ink-2); margin-right: 2px; }
+.chip { min-height: 32px; padding: 0 14px; border-radius: 999px; background: var(--wash); font-size: var(--t-s); transition: background-color .15s; }
+@media (hover: hover) { .chip:hover { background: var(--hair); } }
+.dict-sheet .dict { width: auto; max-height: none; overflow: visible; padding: 8px 2px 4px; border: 0; }
+.dict-sheet .dict-word { font-size: 38px; letter-spacing: -.02em; }
+.dict-sheet .dict-ipa { font-size: var(--t-m); }
+.dict-sheet .dict-def { font-size: var(--t-m); }
+.dict-sheet .dict-ex { font-size: 15px; }
+.dict-sheet .dict-label { font-size: 17px; }
+.dict-sheet .dict-state { padding: 8px 2px; }
+.dict-hint { margin-top: 18px; font-size: var(--t-xs); color: var(--ink-2); line-height: 1.55; max-width: 34ch; }
+:root[data-style="typewriter"] .dict-sheet .dict-word { font-family: 'Quire Typewriter', monospace; font-weight: 700; }
+:root[data-style="matrix"] .dict-sheet .dict-word { font-family: var(--dot); font-weight: 900; font-variation-settings: 'ROND' 100; letter-spacing: .02em; }

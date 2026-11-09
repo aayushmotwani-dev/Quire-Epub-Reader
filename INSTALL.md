@@ -68,6 +68,8 @@ Paid Apple Developer ($99 per year) removes the weekly step; ask me and I will s
 - **Full window** (Windows and Mac): press **F11**, the frame button in the library, or **F** in a book. Press **Esc**, or move the mouse to the
   top edge and click the **X** that slides down, to get the title bar and window buttons back.
 - **Settings, Advanced**: Style (Quire, Typewriter, Dot matrix), app typeface, accent colour, home screen pattern, interface text size, corners, the page footer, left-edge tap (back or forward) and page turn speed. Typewriter also sets the book to Courier Prime; choosing another style puts your usual book font back. **Reset all settings** keeps your books, goals and name.
+- **Dictionary** (book icon on the home screen): look up any word without opening a book. Works offline, remembers your last lookups.
+- **Fast resume**: Quire reopens the book you were reading, on the same page. Settings, Advanced, **When Quire opens** switches this to the library.
 - **Reading goals** on the home screen: tap **Change** to set books a month and books a year (the year goal can't be lower than the month goal). A book counts when you reach its end,
   or when you choose **Mark as finished** in its menu (the three dots).
 

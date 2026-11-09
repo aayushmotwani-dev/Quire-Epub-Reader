@@ -981,7 +981,7 @@ function placePop(first, last) {
 }
 
 // The dictionary card. Everything from the dictionary goes in as text.
-function dictCard(entry, relayout) {
+export function dictCard(entry, relayout = () => {}) {
   const card = el('div', { class: 'dict', role: 'region', 'aria-label': 'Dictionary' })
   if (!entry.found) {
     card.append(el('p', { class: 'dict-state' }, el('b', { text: entry.word }), ' is not in the dictionary.'))
