@@ -8,6 +8,7 @@ function fontFaces(key) {
   const f = FONTS[key]
   if (!f?.file) return ''
   const family = f.family.split(',')[0]
+  if (f.weights) return staticFaces(f, family)
   const axis = f.opsz ? 'opsz' : 'wght'
   const faces = []
   for (const style of f.noItalic ? ['normal'] : ['normal', 'italic']) {
@@ -18,6 +19,16 @@ function fontFaces(key) {
       faces.push(`@font-face{font-family:${family};font-style:${style};font-weight:200 900;font-display:block;src:url("${fontURL(`${f.file}-${subset}-${axis}-${style}.woff2`)}") format("woff2");unicode-range:${range}}`)
     }
   }
+  return faces.join('\n')
+}
+
+// Static fonts (Courier Prime): one file per weight and style. Accented
+// letters outside Latin-1 come in the regular weight only.
+function staticFaces(f, family) {
+  const faces = []
+  for (const w of f.weights) for (const style of ['normal', 'italic'])
+    faces.push(`@font-face{font-family:${family};font-style:${style};font-weight:${w};font-display:block;src:url("${fontURL(`${f.file}-latin-${w}-${style}.woff2`)}") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}`)
+  faces.push(`@font-face{font-family:${family};font-style:normal;font-weight:100 900;font-display:block;src:url("${fontURL(`${f.file}-latin-ext-400-normal.woff2`)}") format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1E9F,U+1EF2-1EFF,U+20A0-20AB,U+20AD-20C0,U+2C60-2C7F,U+A720-A7FF}`)
   return faces.join('\n')
 }
 

@@ -5,7 +5,7 @@ import * as db from './db.js'
 import { loadBookFile } from './importer.js'
 import { guardBook } from './sanitize.js'
 import { readingCSS, themeVars } from './reading-style.js'
-import { getSettings, setSettings, effectiveTurn, systemWantsStill, onSettings, resolveThemeKey, onSystemThemeChange, applyAppMode, THEMES, FONTS, MARGINS, LIMITS, TURNS, PAGES } from './settings.js'
+import { getSettings, setSettings, effectiveTurn, systemWantsStill, onSettings, resolveThemeKey, onSystemThemeChange, applyAppMode, THEMES, FONTS, MARGINS, LIMITS, TURNS, PAGES, SPEED_FACTOR } from './settings.js'
 import { lookup, lookupable, speak, canSpeak } from './dictionary.js'
 import { el, $, $$, ICONS, iconButton, toast, showSheet, closeSheet, isSheetOpen, openSheetId, noteDialog, langMap, formatMinutes, isTouch, isCompact } from './ui.js'
 import { fillSegBar } from './library.js'
@@ -262,7 +262,7 @@ function applySettings() {
     const turn = effectiveTurn(s)
     renderer.toggleAttribute('animated', turn !== 'none')
     // "Page flip" without a page picture (a browser): a slower slide with a shadow along the moving edge.
-    renderer.setAttribute('turn-duration', turn === 'page' ? '520' : '300')
+    renderer.setAttribute('turn-duration', String(Math.round((turn === 'page' ? 520 : 300) * SPEED_FACTOR[s.speed])))
     renderer.setAttribute('turn-ease', turn === 'page' ? 'in-out' : 'out')
     R.fxOn = turn === 'page'
     renderer.setStyles?.(readingCSS(s, themeKey))
@@ -340,7 +340,7 @@ function onRelocate(detail) {
   $('#r-scrub').setAttribute('aria-valuetext', `${pct}%${chapter ? ', ' + chapter : ''}`)
 
   samplePages()
-  R.marginal = { chapter, pct, leftInChapter, hasPages: pagesLeft != null }
+  R.marginal = { chapter, pct, leftInChapter, hasPages: pagesLeft != null, leftInBook: time?.total ? `${formatMinutes(time.total)} left in book` : '' }
   fillMarginals()
 
   syncBookmarkButton()
@@ -356,11 +356,21 @@ function fillMarginals() {
   if (!m) return
   const renderer = R.view.renderer
   const heads = renderer.heads ?? [], feet = renderer.feet ?? []
-  if (getSettings().focus) { for (const x of [...heads, ...feet]) x.textContent = ''; return } // focus mode: text only
+  const s = getSettings()
+  if (s.focus) { for (const x of [...heads, ...feet]) x.textContent = ''; return } // focus mode: text only
   if (heads.length === 1) heads[0].textContent = m.chapter || R.record.title
   else if (heads.length > 1) { heads[0].textContent = R.record.title; heads[heads.length - 1].textContent = m.chapter }
-  if (feet.length === 1) feet[0].textContent = m.hasPages ? m.leftInChapter : `${m.pct}%`
-  else if (feet.length > 1) { feet[0].textContent = `${m.pct}%`; feet[feet.length - 1].textContent = m.leftInChapter }
+  // The foot: what the reader chose in Settings, Advanced. With two pages, the
+  // left foot and the right foot can each say one thing.
+  const pct = `${m.pct}%`
+  let [one, left, right] = [m.hasPages ? m.leftInChapter : pct, pct, m.leftInChapter]
+  if (s.footer === 'pages') [one, left, right] = [m.leftInChapter, '', m.leftInChapter]
+  else if (s.footer === 'percent') [one, left, right] = [pct, pct, '']
+  else if (s.footer === 'time') [one, left, right] = [m.leftInBook || pct, '', m.leftInBook || pct]
+  else if (s.footer === 'none') [one, left, right] = ['', '', '']
+  for (const f of feet) f.textContent = ''
+  if (feet.length === 1) feet[0].textContent = one
+  else if (feet.length > 1) { feet[0].textContent = left; feet[feet.length - 1].textContent = right }
 }
 
 function scheduleSave() {
@@ -463,6 +473,7 @@ async function flipTurn(where) {
       dark: !!theme.dark,
       host: $('#reader'),
       quick: !!reader.queuedTurns?.length,
+      speed: SPEED_FACTOR[getSettings().speed] ?? 1,
       perform: async () => {
         const animated = r.hasAttribute('animated')
         r.removeAttribute('animated')
@@ -507,7 +518,9 @@ function onTap(x, target, doc, detail = 1) {
     if (R.chromeOn) { setChrome(false); return }
     const w = window.innerWidth
     const scrolled = R.view.renderer.scrolled
-    if (!scrolled && x < w * 0.28) turn('goLeft')
+    // Left edge: back, or forward for one-handed reading (Settings, Advanced).
+    const leftGo = getSettings().leftTap === 'forward' ? (R.book.dir === 'rtl' ? 'goLeft' : 'goRight') : 'goLeft'
+    if (!scrolled && x < w * 0.28) turn(leftGo)
     else if (!scrolled && x > w * 0.72) turn('goRight')
     else setChrome(true)
   }, isTouch() ? 0 : 260)

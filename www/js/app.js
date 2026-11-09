@@ -2,8 +2,9 @@ import { initLibrary, refreshLibrary } from './library.js'
 import { initReader, openBook, closeBook, isReading } from './reader.js'
 import { importFile, requestPersistence, ImportError } from './importer.js'
 import { openDB } from './db.js'
-import { $, $$, el, toast, showSheet, closeSheet, handleSheetPop, isSheetOpen } from './ui.js'
-import { getFlag, setFlag, getSettings, setSettings, onSettings, applyAppMode, onSystemThemeChange, APPEARANCES } from './settings.js'
+import { $, $$, el, toast, showSheet, closeSheet, handleSheetPop, isSheetOpen, confirmDialog } from './ui.js'
+import { getFlag, setFlag, getSettings, setSettings, onSettings, applyAppMode, applyLook, onSystemThemeChange, setStyle, resetSettings,
+  APPEARANCES, STYLES, UI_FONTS, ACCENTS, CORNERS, UI_SIZES, FOOTERS, TAPS, SPEEDS } from './settings.js'
 
 const splashStart = performance.now()
 
@@ -258,16 +259,60 @@ async function hideSplash() {
 
 // ---------------------------------------------------------------- settings sheet
 
-function initSettingsSheet() {
-  const seg = $('#set-appearance')
-  seg.replaceChildren(...Object.entries(APPEARANCES).map(([key, label]) => el('label', {},
-    el('input', { type: 'radio', name: 'set-appearance', value: key, onchange: () => setSettings({ appearance: key }) }),
+// A row of radio buttons. Each one sets one setting.
+function radios(container, name, options, pick) {
+  container.replaceChildren(...Object.entries(options).map(([value, label]) => el('label', {},
+    el('input', { type: 'radio', name, value, onchange: () => pick(value) }),
     el('span', { text: label }))))
+}
+
+// What each style looks like, drawn small on its card.
+const STYLE_NOTES = {
+  quire: 'Clean and quiet',
+  typewriter: 'Typed on paper, books too',
+  matrix: 'Dot-matrix titles',
+}
+
+function initSettingsSheet() {
+  radios($('#set-appearance'), 'set-appearance', APPEARANCES, v => setSettings({ appearance: v }))
   const name = $('#set-name')
   name.addEventListener('input', () => setSettings({ name: name.value }))
+
+  // Advanced
+  $('#set-style').replaceChildren(...Object.entries(STYLES).map(([key, label]) => el('label', { class: 'style-card', dataset: { styleCard: key } },
+    el('input', { type: 'radio', name: 'set-style', value: key, onchange: () => setStyle(key) }),
+    el('span', { class: 'style-sample', 'aria-hidden': 'true' }, el('span', { class: 'style-aa' }, 'Aa', el('span', { class: 'style-stop' }))),
+    el('span', { class: 'style-name', text: label }),
+    el('span', { class: 'style-note', text: STYLE_NOTES[key] }))))
+  radios($('#set-ui-font'), 'set-ui-font', UI_FONTS, v => setSettings({ uiFont: v }))
+  $('#set-accent').replaceChildren(...Object.entries(ACCENTS).map(([key, label]) => el('label', { class: 'accent-swatch', dataset: { swatch: key }, title: label },
+    el('input', { type: 'radio', name: 'set-accent', value: key, onchange: () => setSettings({ accent: key }) }),
+    el('span', { class: 'accent-dot', 'aria-hidden': 'true' }),
+    el('span', { class: 'accent-name', text: label }))))
+  radios($('#set-ui-size'), 'set-ui-size', UI_SIZES, v => setSettings({ uiSize: v }))
+  radios($('#set-corners'), 'set-corners', CORNERS, v => setSettings({ corners: v }))
+  radios($('#set-left-tap'), 'set-left-tap', TAPS, v => setSettings({ leftTap: v }))
+  radios($('#set-speed'), 'set-speed', SPEEDS, v => setSettings({ speed: v }))
+  const footer = $('#set-footer')
+  footer.replaceChildren(...Object.entries(FOOTERS).map(([value, label]) => el('option', { value, text: label })))
+  footer.addEventListener('change', () => setSettings({ footer: footer.value }))
+  $('#set-reset').addEventListener('click', async () => {
+    const ok = await confirmDialog({
+      title: 'Reset all settings?',
+      body: 'Style, typefaces, page theme, turning and the rest go back to how Quire starts. Your books, highlights, notes, goals and name stay.',
+      confirm: 'Reset',
+      danger: true,
+    })
+    if (ok) { resetSettings(); toast('Settings reset') }
+  })
+
+  const RADIOS = { 'set-appearance': 'appearance', 'set-style': 'style', 'set-ui-font': 'uiFont', 'set-accent': 'accent',
+    'set-ui-size': 'uiSize', 'set-corners': 'corners', 'set-left-tap': 'leftTap', 'set-speed': 'speed' }
   const sync = () => {
     const s = getSettings()
-    for (const r of $$('input[name="set-appearance"]')) r.checked = r.value === s.appearance
+    for (const [group, key] of Object.entries(RADIOS))
+      for (const r of $$(`input[name="${group}"]`)) r.checked = r.value === s[key]
+    footer.value = s.footer
     if (document.activeElement !== name) name.value = s.name
   }
   onSettings(sync)
@@ -302,7 +347,7 @@ async function boot() {
   window.addEventListener('popstate', () => { handleSheetPop() })
   window.addEventListener('hashchange', () => route())
   onSystemThemeChange(() => { if (!isReading()) applyAppMode() })
-  onSettings(() => { if (!isReading()) applyAppMode() })
+  onSettings(() => { if (!isReading()) applyAppMode(); else applyLook() })
   initSettingsSheet()
 
   initDrop()

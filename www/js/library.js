@@ -93,12 +93,22 @@ function render() {
 
 // ---------------------------------------------------------------- reading goal
 
-const PERIODS = { month: 'Month', year: 'Year' }
+// Two goals: books a month and books a year. The year goal can never be
+// lower than the month goal (a year holds every month).
+const MAX_GOAL = 365
+const okGoal = n => Number.isInteger(n) && n >= 1 && n <= MAX_GOAL
 export function getGoal() {
-  const g = getFlag('goal', null)
-  const period = g && Object.hasOwn(PERIODS, g.period) ? g.period : 'month'
-  const target = g && Number.isInteger(g.target) && g.target >= 1 && g.target <= 365 ? g.target : (period === 'year' ? 12 : 2)
-  return { period, target }
+  const g = getFlag('goal', null) ?? {}
+  let month = okGoal(g.month) ? g.month : null
+  let year = okGoal(g.year) ? g.year : null
+  // Saved by the first version (one number for "month" or "year").
+  if (month == null && year == null && okGoal(g.target)) {
+    if (g.period === 'year') year = g.target
+    else month = g.target
+  }
+  month ??= 2
+  year ??= Math.min(MAX_GOAL, Math.max(24, month * 12))
+  return { month, year: Math.max(year, month) }
 }
 
 function periodStart(period, now = new Date()) {
@@ -107,53 +117,70 @@ function periodStart(period, now = new Date()) {
     : new Date(now.getFullYear(), now.getMonth(), 1).getTime()
 }
 
-function renderGoal() {
-  const host = $('#goal')
-  host.hidden = books.length === 0
-  if (host.hidden) return host.replaceChildren()
-  const { period, target } = getGoal()
-  const now = new Date()
-  const done = books.filter(b => finishedTime(b) >= periodStart(period, now)).length
-  const reading = books.filter(b => b.openedAt && !isFinished(b) && b.progress > 0.005).length
-  const yearDone = books.filter(b => finishedTime(b) >= periodStart('year', now)).length
-  const label = period === 'year' ? `in ${now.getFullYear()}` : `in ${now.toLocaleDateString(undefined, { month: 'long' })}`
-  const reached = done >= target
+// One row of the card: "3 of 4 books in November" and its bar.
+function goalRow(label, done, target) {
   // One segment per book while the goal is small enough to count at a glance.
   const bar = el('div', { class: 'goal-bar' + (target > 24 ? ' smooth' : ''), role: 'progressbar',
-    'aria-label': 'Reading goal', 'aria-valuemin': '0', 'aria-valuemax': String(target), 'aria-valuenow': String(Math.min(done, target)) })
+    'aria-label': `Books read ${label}`, 'aria-valuemin': '0', 'aria-valuemax': String(target), 'aria-valuenow': String(Math.min(done, target)) })
   if (target > 24) bar.append(el('span', { class: 'goal-fill', style: `--fill:${Math.min(1, done / target).toFixed(4)}` }))
   else for (let i = 0; i < target; i++) bar.append(el('span', { class: 'goal-seg' + (i < done ? ' on' : '') }))
-  host.replaceChildren(
-    el('div', { class: 'goal-head' },
-      el('h2', { id: 'goal-title', class: 'goal-title', text: 'Reading goal' }),
-      el('button', { type: 'button', class: 'goal-edit', text: 'Change', onclick: editGoal })),
+  const left = target - done
+  return el('div', { class: 'goal-row' },
     el('p', { class: 'goal-count' },
       el('span', { class: 'dot-number goal-done', text: String(done) }),
       el('span', { class: 'goal-of', text: ` of ${target} ${target === 1 ? 'book' : 'books'} ${label}` })),
     bar,
-    el('p', { class: 'goal-note', text: reached ? 'Goal reached. Well read.' : `${target - done} to go` }),
-    el('dl', { class: 'goal-stats' },
-      el('div', {}, el('dt', { text: 'Reading now' }), el('dd', { text: String(reading) })),
-      el('div', {}, el('dt', { text: `Finished in ${now.getFullYear()}` }), el('dd', { text: String(yearDone) }))))
+    el('p', { class: 'goal-note', text: left <= 0 ? 'Goal reached.' : `${left} to go` }))
+}
+
+function renderGoal() {
+  const host = $('#goal')
+  host.hidden = books.length === 0
+  if (host.hidden) return host.replaceChildren()
+  const { month, year } = getGoal()
+  const now = new Date()
+  const doneMonth = books.filter(b => finishedTime(b) >= periodStart('month', now)).length
+  const doneYear = books.filter(b => finishedTime(b) >= periodStart('year', now)).length
+  const reading = books.filter(b => b.openedAt && !isFinished(b) && b.progress > 0.005).length
+  host.replaceChildren(
+    el('div', { class: 'goal-head' },
+      el('h2', { id: 'goal-title', class: 'goal-title', text: 'Reading goals' }),
+      el('p', { class: 'goal-reading', text: `${reading} reading now` }),
+      el('button', { type: 'button', class: 'goal-edit', text: 'Change', onclick: editGoal })),
+    el('div', { class: 'goal-rows' },
+      goalRow(`in ${now.toLocaleDateString(undefined, { month: 'long' })}`, doneMonth, month),
+      goalRow(`in ${now.getFullYear()}`, doneYear, year)))
 }
 
 function editGoal() {
   const dlg = $('#goal-dialog')
-  let { period, target } = getGoal()
-  const num = $('#goal-number')
+  let { month, year } = getGoal()
   const sync = () => {
-    num.textContent = String(target)
-    $('#goal-unit').textContent = `${target === 1 ? 'book' : 'books'} a ${period}`
-    $('#goal-less').disabled = target <= 1
-    $('#goal-more').disabled = target >= 365
-    for (const r of document.querySelectorAll('input[name="goal-period"]')) r.checked = r.value === period
+    $('#goal-month').textContent = String(month)
+    $('#goal-year').textContent = String(year)
+    $('#goal-month-less').disabled = month <= 1
+    $('#goal-month-more').disabled = month >= MAX_GOAL
+    $('#goal-year-less').disabled = year <= month // never below the month goal
+    $('#goal-year-more').disabled = year >= MAX_GOAL
+    $('#goal-month-unit').textContent = month === 1 ? 'book a month' : 'books a month'
+    $('#goal-year-unit').textContent = year === 1 ? 'book a year' : 'books a year'
   }
-  for (const r of document.querySelectorAll('input[name="goal-period"]')) r.onchange = () => { period = r.value; sync() }
-  $('#goal-less').onclick = () => { target = Math.max(1, target - 1); sync() }
-  $('#goal-more').onclick = () => { target = Math.min(365, target + 1); sync() }
+  const step = (which, d) => {
+    if (which === 'month') {
+      month = Math.max(1, Math.min(MAX_GOAL, month + d))
+      year = Math.max(year, month) // a higher month goal lifts the year goal with it
+    } else {
+      year = Math.max(month, Math.min(MAX_GOAL, year + d))
+    }
+    sync()
+  }
+  $('#goal-month-less').onclick = () => step('month', -1)
+  $('#goal-month-more').onclick = () => step('month', 1)
+  $('#goal-year-less').onclick = () => step('year', -1)
+  $('#goal-year-more').onclick = () => step('year', 1)
   const finish = save => {
     dlg.close()
-    if (save) { setFlag('goal', { period, target }); renderGoal() }
+    if (save) { setFlag('goal', { month, year }); renderGoal() }
   }
   $('#goal-save').onclick = () => finish(true)
   $('#goal-cancel').onclick = () => finish(false)
