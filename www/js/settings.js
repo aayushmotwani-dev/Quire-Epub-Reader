@@ -17,6 +17,7 @@ export const FONTS = {
   source: { name: 'Source Serif', family: "'Quire Source Serif', Georgia, serif", file: 'source-serif-4', opsz: true },
   geist: { name: 'Geist', family: "'Quire Geist', system-ui, sans-serif", file: 'geist', noItalic: true },
   atkinson: { name: 'Atkinson', family: "'Quire Atkinson', system-ui, sans-serif", file: 'atkinson-hyperlegible-next' },
+  typewriter: { name: 'Typewriter', family: "'Quire Typewriter', 'Courier New', monospace", file: 'courier-prime', weights: [400, 700] },
 }
 
 // Side margin as a percentage of the page width, per step of the slider.
@@ -24,6 +25,17 @@ export const MARGINS = [3, 5, 7, 9, 12]
 
 export const TURNS = { slide: 'Slide', page: 'Curl', none: 'None' }
 export const APPEARANCES = { system: 'System', light: 'Light', dark: 'Dark' }
+
+// Advanced settings: how the app itself looks and behaves.
+export const STYLES = { quire: 'Quire', typewriter: 'Typewriter', matrix: 'Dot matrix' }
+export const UI_FONTS = { geist: 'Geist', atkinson: 'Atkinson', typewriter: 'Typewriter', system: 'System' }
+export const ACCENTS = { orange: 'Orange', red: 'Red', blue: 'Blue', green: 'Green', graphite: 'Graphite' }
+export const CORNERS = { round: 'Round', square: 'Square' }
+export const UI_SIZES = { small: 'Small', default: 'Default', large: 'Large' }
+export const FOOTERS = { full: 'Pages left and percent', pages: 'Pages left in chapter', percent: 'Percent read', time: 'Time left in book', none: 'Nothing' }
+export const TAPS = { back: 'Goes back', forward: 'Goes forward' }
+export const SPEEDS = { slow: 'Slow', normal: 'Normal', fast: 'Fast' }
+export const SPEED_FACTOR = { slow: 1.45, normal: 1, fast: 0.6 }
 
 export const DEFAULTS = {
   appearance: 'system', // the whole app: system, light or dark
@@ -40,7 +52,18 @@ export const DEFAULTS = {
   focus: false,        // focus mode: nothing on the page but the text
   flow: 'paginated',   // or 'scrolled'
   pages: 'two',        // 'two' = a spread on wide windows, 'one' = one page filling the window
+  // advanced
+  style: 'quire',      // quire, typewriter or matrix
+  uiFont: 'geist',     // the interface typeface
+  accent: 'orange',
+  corners: 'round',
+  uiSize: 'default',   // interface text size (the book has its own)
+  footer: 'full',      // what the bottom of the page shows
+  leftTap: 'back',     // what a tap on the left edge does
+  speed: 'normal',     // how fast pages turn
 }
+
+const ADVANCED = { style: STYLES, uiFont: UI_FONTS, accent: ACCENTS, corners: CORNERS, uiSize: UI_SIZES, footer: FOOTERS, leftTap: TAPS, speed: SPEEDS }
 
 export const PAGES = { two: 'Two pages', one: 'One page' }
 
@@ -78,6 +101,8 @@ function sanitize(obj) {
     if (has(PAGES, obj.pages)) s.pages = obj.pages
     else if (obj.spread === false) s.pages = 'one' // setting from an earlier version
     if (obj.flow === 'paginated' || obj.flow === 'scrolled') s.flow = obj.flow
+    for (const [k, options] of Object.entries(ADVANCED))
+      if (has(options, obj[k])) s[k] = obj[k]
   }
   return s
 }
@@ -100,6 +125,24 @@ export function getSettings() {
 export function setSettings(patch) {
   state = sanitize({ ...state, ...patch })
   try { localStorage.setItem(KEY, JSON.stringify(state)) } catch { /* storage blocked: keep in memory */ }
+  for (const fn of listeners) fn(getSettings())
+}
+
+// Choosing a style also sets the type that belongs to it. Leaving Typewriter
+// puts back the usual faces, so nothing stays in Courier by surprise.
+export function setStyle(style) {
+  const s = state
+  if (style === 'typewriter') return setSettings({ style, uiFont: 'typewriter', font: 'typewriter', justify: false, hyphenate: false })
+  const patch = { style }
+  if (s.uiFont === 'typewriter') patch.uiFont = DEFAULTS.uiFont
+  if (s.font === 'typewriter') { patch.font = DEFAULTS.font; patch.justify = DEFAULTS.justify; patch.hyphenate = DEFAULTS.hyphenate }
+  setSettings(patch)
+}
+
+// Everything back to how Quire starts, except the reader's name.
+export function resetSettings() {
+  state = { ...DEFAULTS, name: state.name }
+  try { localStorage.setItem(KEY, JSON.stringify(state)) } catch { /* ignore */ }
   for (const fn of listeners) fn(getSettings())
 }
 
@@ -127,6 +170,7 @@ export function onSystemThemeChange(fn) {
 // Library and dialogs follow the app setting. The reader overrides this with
 // its page theme while a book is open (see reader.js).
 export function applyAppMode() {
+  applyLook()
   const root = document.documentElement
   const dark = isDarkScheme()
   root.dataset.ui = dark ? 'dark' : 'light'
@@ -136,6 +180,17 @@ export function applyAppMode() {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', canvas)
   window.quireNative?.setChromeColor?.(canvas)
   document.body && (document.body.style.background = '')
+}
+
+// The advanced look lives on <html> as data attributes; app.css does the rest.
+// It applies in the library and while reading alike.
+export function applyLook(s = state) {
+  const d = document.documentElement.dataset
+  d.style = s.style
+  d.uiFont = s.uiFont
+  d.accent = s.accent
+  d.corners = s.corners
+  d.uiSize = s.uiSize
 }
 
 // Small UI flags (sort order, hints already shown).

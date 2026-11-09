@@ -32,6 +32,8 @@ Your books stay on your device. No account, no server, no tracking.
 
 **Reading goals.** Set how many books you want to finish each month and each year. The library shows how far you are, and how many books you are reading now.
 
+**Make it yours.** Settings, Advanced, has three styles: the clean Quire look, Typewriter (the app and your books set in Courier Prime, as if typed) and Dot matrix (titles and the logo in dots). You can also change the app typeface, the accent colour (orange, red, blue, green or graphite), interface text size, square or round corners, what the bottom of the page shows, which way the left edge turns, and how fast pages turn. Reset puts it all back.
+
 **Room to read.** Focus mode leaves only the text: no running heads, no page info, no pointer. On a computer, full window hides the title bar too; press Esc, or move to the top edge and click the X, to come back.
 
 ### On your phone
@@ -48,7 +50,7 @@ Open a book straight from Files, Downloads or the share sheet, and it lands in y
 
 ## Everything else
 
-- Fonts: the book's own, or Literata, Source Serif 4, Geist and Atkinson Hyperlegible Next, with size, line spacing and margins
+- Fonts: the book's own, or Literata, Source Serif 4, Geist, Atkinson Hyperlegible Next and Typewriter, with size, line spacing and margins
 - One or two pages side by side, or continuous scrolling
 - Bookmarks with a ribbon, notes, highlights, and export of all your highlights
 - Search inside a book, and a side panel with the contents, your bookmarks and your highlights
@@ -93,5 +95,5 @@ Quire has no backend. Books, highlights, notes, progress and goals live only on 
 
 - [foliate-js](https://github.com/johnfactotum/foliate-js) by John Factotum, MIT licence (`www/vendor/foliate-js/LICENSE`)
 - Princeton WordNet 3.0 and the CMU Pronouncing Dictionary (`www/dict/LICENSE-*.txt`)
-- Literata, Source Serif 4, Atkinson Hyperlegible Next, Geist and Doto under the SIL Open Font License (`www/fonts/OFL-*.txt`)
+- Literata, Source Serif 4, Atkinson Hyperlegible Next, Geist, Doto and Courier Prime under the SIL Open Font License (`www/fonts/OFL-*.txt`)
 - Screenshots use public-domain and openly licensed sample books.

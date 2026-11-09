@@ -89,8 +89,9 @@ function slice(url, w, h, offsetX, width, cls = 'flip-slice') {
  * host      element to draw in
  * perform   moves the real view without its own animation; returns a promise
  * quick     more turns are waiting: turn faster
+ * speed     1 is normal; above 1 is slower (Settings, Advanced)
  */
-export async function flipPage({ rect, columns, forward, paper, dark, host, perform, quick = false }) {
+export async function flipPage({ rect, columns, forward, paper, dark, host, perform, quick = false, speed = 1 }) {
   if (busy) return false
   const W = Math.round(rect.width), H = Math.round(rect.height)
   if (!(W > 80 && H > 80)) return false
@@ -132,7 +133,7 @@ export async function flipPage({ rect, columns, forward, paper, dark, host, perf
         await new Promise(resolve => {
           const step = now => {
             if (!cover.isConnected) return resolve()
-            const t = Math.min(1, (now - t0) / (quick ? CURL_MS * 0.55 : CURL_MS))
+            const t = Math.min(1, (now - t0) / ((quick ? CURL_MS * 0.55 : CURL_MS) * speed))
             if (!curl.draw(ease(t))) return resolve()
             if (t < 1) requestAnimationFrame(step)
             else resolve()
@@ -205,7 +206,7 @@ export async function flipPage({ rect, columns, forward, paper, dark, host, perf
     await new Promise(resolve => {
       const step = now => {
         if (!cover.isConnected) return resolve()
-        const t = Math.min(1, (now - t0) / (quick ? TURN_MS * 0.55 : TURN_MS))
+        const t = Math.min(1, (now - t0) / ((quick ? TURN_MS * 0.55 : TURN_MS) * speed))
         const e = ease(t)
         const deg = e * maxAngle
         const rad = deg * Math.PI / 180
