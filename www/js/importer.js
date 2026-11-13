@@ -21,7 +21,7 @@ async function fingerprint(buffer, file) {
   return `f-${file.size}-${file.lastModified || 0}-${file.name}`
 }
 
-async function makeThumb(blob) {
+export async function makeThumb(blob) {
   if (!blob || !blob.size) return null
   try {
     const bmp = await createImageBitmap(blob)
@@ -106,4 +106,18 @@ export async function loadBookFile(id) {
   const rec = await db.get('files', id)
   if (!rec) return null
   return new File([rec.buffer], rec.name || 'book.epub', { type: 'application/epub+zip' })
+}
+
+// The title, author and cover as the EPUB file itself states them.
+export async function readOriginal(id) {
+  const file = await loadBookFile(id)
+  const parsed = await makeBook(file)
+  const meta = parsed.metadata ?? {}
+  let coverBlob = null
+  try { coverBlob = await parsed.getCover?.() } catch { coverBlob = null }
+  return {
+    title: cleanText(langMap(meta.title)) || cleanText((file.name || 'Untitled').replace(/\.epub$/i, '')),
+    author: cleanText(formatAuthors(meta.author)),
+    cover: await makeThumb(coverBlob),
+  }
 }

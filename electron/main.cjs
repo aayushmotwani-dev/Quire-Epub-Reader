@@ -119,6 +119,26 @@ ipcMain.on('chrome-color', (_e, color) => {
   win.setBackgroundColor(color)
 })
 
+// Book details: one cover image from Open Library, asked for by its number.
+// The address is built here, never taken from the page, and only an image of a
+// sensible size from Open Library or the Internet Archive is handed back.
+ipcMain.handle('fetch-cover', async (e, coverId) => {
+  if (!win || e.sender !== win.webContents) return null
+  if (!String(e.senderFrame?.url ?? '').startsWith('app://quire/')) return null
+  if (!Number.isSafeInteger(coverId) || coverId <= 0) return null
+  try {
+    const res = await net.fetch(`https://covers.openlibrary.org/b/id/${coverId}-L.jpg?default=false`, { credentials: 'omit' })
+    if (!res.ok) return null
+    const host = new URL(res.url).hostname
+    if (!/(^|\.)(openlibrary\.org|archive\.org)$/.test(host)) return null
+    const type = (res.headers.get('content-type') || '').split(';')[0].trim()
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(type)) return null
+    const data = new Uint8Array(await res.arrayBuffer())
+    if (!data.length || data.length > 6 * 1024 * 1024) return null
+    return { data, type }
+  } catch { return null }
+})
+
 // Page flip: the reader asks for a picture of the page it is showing, then
 // turns that picture over while the real next page is already underneath.
 // Only the app's own page may ask, and only for a part of its own window.

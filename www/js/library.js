@@ -2,6 +2,7 @@ import * as db from './db.js'
 import { el, $, iconButton, toast, confirmDialog } from './ui.js'
 import { getFlag, setFlag } from './settings.js'
 import { exportHighlights } from './export.js'
+import { editBook } from './edit-book.js'
 
 const coverURLs = new Map() // book id -> object URL, revoked when the book leaves
 
@@ -297,6 +298,15 @@ function openMenu(anchor, book) {
       await refreshLibrary()
       toast(finished ? 'Marked as not finished' : 'Marked as finished')
     } }, el('span', { text: finished ? 'Mark as not finished' : 'Mark as finished' })),
+    el('button', { type: 'button', role: 'menuitem', icon: 'note', onclick: () => {
+      closeMenu()
+      editBook(book, { saved: async id => {
+        // The cover may have changed: drop the cached picture so the shelf redraws it.
+        const old = coverURLs.get(id)
+        if (old) { URL.revokeObjectURL(old); coverURLs.delete(id) }
+        await refreshLibrary()
+      } })
+    } }, el('span', { text: 'Edit details' })),
     el('button', { type: 'button', role: 'menuitem', icon: 'export', onclick: async () => { closeMenu(); await exportHighlights(book) } }, el('span', { text: 'Export highlights' })),
     el('button', { type: 'button', role: 'menuitem', class: 'danger', icon: 'trash', onclick: async () => { closeMenu(); await removeBook(book) } }, el('span', { text: 'Remove from library' })))
   menu.hidden = false

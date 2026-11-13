@@ -28,6 +28,8 @@ Your books stay on your device. No account, no server, no tracking.
 
 **A dictionary of its own.** The book icon on the home screen opens the same offline dictionary without a book open: look up any word, hear it, and tap a recent word to see it again.
 
+**Book details you can fix.** The menu on any book opens its details: change the title, the author or the cover, with your own image or with a match from [Open Library](https://openlibrary.org). This is the one place Quire uses the internet, and only when you press Search; it sends the title and author you typed, nothing else. The EPUB file is never changed, so you can always reset to the original.
+
 **Straight back into your book.** Quire reopens the book you were reading on the page you left, with a short welcome. Settings, Advanced, When Quire opens, can send it to the library instead.
 
 **A chapter bar that knows the book.** The bar at the bottom follows the table of contents, with one segment per chapter and wider gaps between parts. Hover or drag to see the page, chapter and part before you jump.
@@ -88,7 +90,7 @@ The workflow in `.github/workflows/build.yml` builds a Windows installer, a Mac 
 
 ## Privacy
 
-Quire has no backend. Books, highlights, notes, progress and goals live only on the device you read on, and the dictionary is built in. Nothing is uploaded, and there are no API keys in this project. The flip side is that devices do not sync with each other.
+Quire has no backend. Books, highlights, notes, progress and goals live only on the device you read on, and the dictionary is built in. Nothing is uploaded, and there are no API keys in this project. The one exception is optional: if you press Search in a book's details, the title and author you typed are sent to Open Library to find matching details and a cover. The flip side is that devices do not sync with each other.
 
 ## Status
 

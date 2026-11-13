@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- Scripts only from this site: a book can never run code here. Keep in sync with vercel.json. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' blob:; img-src 'self' blob: data:; font-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' blob: data:; frame-src 'self' blob:; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' blob:; img-src 'self' blob: data: https://covers.openlibrary.org https://*.archive.org; font-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' blob: data: https://openlibrary.org https://covers.openlibrary.org https://*.archive.org; frame-src 'self' blob:; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <title>Quire</title>
@@ -209,6 +209,44 @@
       </fieldset>
     </div>
     <p class="fixed-only sheet-note">This book has a fixed layout, so only the page theme applies.</p>
+  </div>
+</aside>
+
+<aside id="sheet-edit" class="sheet panel edit-sheet" role="dialog" aria-modal="true" aria-labelledby="edit-title" hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <header class="sheet-head">
+    <h2 id="edit-title">Book details</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Close" title="Close">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </header>
+  <div class="sheet-body">
+    <form id="edit-form" autocomplete="off">
+      <div class="edit-top">
+        <div class="edit-cover">
+          <div id="edit-cover" class="edit-cover-img"></div>
+          <button type="button" id="edit-pick" class="btn btn-quiet edit-small">Choose image</button>
+          <input type="file" id="edit-file" accept="image/png,image/jpeg,image/webp" hidden>
+        </div>
+        <div class="edit-fields">
+          <label class="edit-label" for="edit-name">Title</label>
+          <span class="field"><input id="edit-name" type="text" maxlength="300" required></span>
+          <label class="edit-label" for="edit-author">Author</label>
+          <span class="field"><input id="edit-author" type="text" maxlength="300"></span>
+        </div>
+      </div>
+      <div class="edit-actions">
+        <button type="button" id="edit-reset" class="btn btn-quiet">Reset to original</button>
+        <button type="submit" id="edit-save" class="btn btn-solid">Save</button>
+      </div>
+    </form>
+    <section class="edit-online" aria-labelledby="edit-online-title">
+      <h3 id="edit-online-title">Find details online</h3>
+      <p class="setting-note">Searches Open Library. Only the title and author above are sent, and only when you press Search.</p>
+      <button type="button" id="edit-search" class="btn btn-quiet">Search</button>
+      <p id="edit-status" class="setting-note" aria-live="polite" hidden></p>
+      <ul id="edit-results" class="edit-results"></ul>
+    </section>
   </div>
 </aside>
 
