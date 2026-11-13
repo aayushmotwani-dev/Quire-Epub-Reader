@@ -11,6 +11,9 @@ import { el, $, $$, ICONS, iconButton, toast, showSheet, closeSheet, isSheetOpen
 import { fillSegBar } from './library.js'
 import { exportHighlights } from './export.js'
 import { canFlip, flipPage, isFlipping, warmUpCurl } from './pageflip.js'
+import { tick } from './haptics.js'
+import { openQuoteCard } from './quote.js'
+import * as stats from './stats.js'
 
 export const HIGHLIGHT_COLORS = {
   yellow: { label: 'Yellow', value: '#f2c94c' },
@@ -24,6 +27,7 @@ let R = null // the open book's state; null when the library is showing
 let onExit = () => {}
 
 export const isReading = () => !!R
+export function jumpTo(target) { try { R?.view.goTo(target) } catch { /* the place is gone */ } }
 
 export function initReader({ exit }) {
   onExit = exit
@@ -141,6 +145,7 @@ export async function openBook(id) {
   } catch {
     await view.init({ showTextStart: true }).catch(() => view.next())
   }
+  stats.begin()
   setChrome(true)
   R.hideTimer = setTimeout(() => setChrome(false), 2200)
   db.updateBook(id, { openedAt: Date.now(), marks: R.marks }).catch(() => {})
@@ -151,6 +156,7 @@ export async function closeBook({ silent = false } = {}) {
   if (!R) return
   const r = R
   clearTimeout(r.hideTimer)
+  stats.end()
   await saveProgress(true)
   closeSheet({ silent: true })
   hideSelectionPop()
@@ -305,6 +311,7 @@ function updateTurnFx() {
 function onRelocate(detail) {
   if (!R) return
   R.location = detail
+  stats.active()
   const { fraction = 0, tocItem, time, section } = detail
   const chapter = tocItem?.label?.trim() || ''
   R.chapter = chapter
@@ -386,6 +393,8 @@ async function saveProgress(now = false) {
   const patch = { cfi, progress: fraction ?? 0, chapter: R.chapter || '', openedAt: Date.now() }
   const perPage = measuredPageSize()
   if (perPage) patch.pageSize = { layout: layoutKey(), perPage: Math.round(perPage) }
+  const mins = R.location.time?.total
+  if (Number.isFinite(mins)) patch.minsLeft = Math.max(0, Math.round(mins))
   // Reaching the end counts the book as read (for the reading goal).
   if ((fraction ?? 0) >= 0.995 && !(R.record.finishedAt > 0)) patch.finishedAt = Date.now()
   R.record = { ...R.record, ...patch }
@@ -401,6 +410,7 @@ function turn(where) {
   // as quicker flips, so quick readers do not lose turns.
   if (isFlipping()) { if ((R.queuedTurns ??= []).length < 4) R.queuedTurns.push(where); return }
   if (!$('#r-jump').hidden && ++R.jumpTurns > 3) hideJump()
+  tick()
   if (shouldFlip(where)) flipTurn(where)
   else R.view[where]()
 }
@@ -501,6 +511,7 @@ function setChrome(on) {
 let tapTimer = 0
 function onTap(x, target, doc, detail = 1) {
   if (!R) return
+  stats.active()
   // A second click of a double-click (selecting a word) must not also turn the page.
   clearTimeout(tapTimer)
   if (detail > 1) return
@@ -569,6 +580,7 @@ function onWheel(e) {
 
 function onKey(e) {
   if (!R) return
+  stats.active()
   const t = e.target
   const typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))
   const mod = e.ctrlKey || e.metaKey
@@ -943,6 +955,7 @@ async function showSelectionPop({ range, index, existing = null }) {
     const rows = [
       row('noteAdd', existing?.note ? 'Edit note' : 'Add note', () => editNote()),
       row('copy', 'Copy', () => copySelection()),
+      row('export', 'Quote card', () => { const t = R.selection?.existing?.text || text; hideSelectionPop(); openQuoteCard({ text: t, title: R.record.title, author: R.record.author }) }),
       word ? row('define', 'Define', showDefine, preview) : null,
       row('search', 'Search book', () => searchSelection()),
       existing ? row('trash', 'Remove highlight', () => removeHighlight(existing)) : null,
@@ -1292,7 +1305,7 @@ function buildAppearanceSheet() {
   mg.max = MARGINS.length - 1
   mg.addEventListener('input', () => setSettings({ margin: parseInt(mg.value, 10) }))
 
-  for (const key of ['justify', 'hyphenate', 'focus'])
+  for (const key of ['justify', 'hyphenate', 'focus', 'dropCaps', 'haptics'])
     $(`#aa-${key}`).addEventListener('change', e => setSettings({ [key]: e.target.checked }))
   $('#aa-pages').replaceChildren(...Object.entries(PAGES).map(([key, label]) => el('label', {},
     el('input', { type: 'radio', name: 'aa-pages', value: key, onchange: () => setSettings({ pages: key }) }),
@@ -1322,7 +1335,7 @@ function syncAppearanceSheet() {
   $('#aa-line').value = String(s.lineHeight)
   $('#aa-line-val').textContent = s.lineHeight.toFixed(2)
   $('#aa-margin').value = String(s.margin)
-  for (const key of ['justify', 'hyphenate', 'focus']) $(`#aa-${key}`).checked = s[key]
+  for (const key of ['justify', 'hyphenate', 'focus', 'dropCaps', 'haptics']) $(`#aa-${key}`).checked = s[key]
   for (const r of $$('input[name="aa-pages"]')) r.checked = r.value === s.pages
   for (const r of $$('input[name="aa-turn"]')) r.checked = r.value === effectiveTurn(s)
   $('#aa-turn-note').hidden = !(systemWantsStill() && !s.turnChosen)

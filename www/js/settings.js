@@ -24,7 +24,7 @@ export const FONTS = {
 export const MARGINS = [3, 5, 7, 9, 12]
 
 export const TURNS = { slide: 'Slide', page: 'Curl', none: 'None' }
-export const APPEARANCES = { system: 'System', light: 'Light', dark: 'Dark' }
+export const APPEARANCES = { system: 'System', light: 'Light', dark: 'Dark', evening: 'Evening' }
 
 // Advanced settings: how the app itself looks and behaves.
 export const STYLES = { quire: 'Quire', typewriter: 'Typewriter', matrix: 'Dot matrix' }
@@ -52,6 +52,8 @@ export const DEFAULTS = {
   justify: true,
   hyphenate: true,
   focus: false,        // focus mode: nothing on the page but the text
+  dropCaps: false,     // a large first letter where a chapter starts
+  haptics: true,       // a light tap in the hand when a page turns (phones)
   flow: 'paginated',   // or 'scrolled'
   pages: 'two',        // 'two' = a spread on wide windows, 'one' = one page filling the window
   // advanced
@@ -100,7 +102,7 @@ function sanitize(obj) {
     if (Number.isFinite(obj.size)) s.size = clamp(Math.round(obj.size), ...LIMITS.size)
     if (Number.isFinite(obj.lineHeight)) s.lineHeight = clamp(Math.round(obj.lineHeight * 100) / 100, ...LIMITS.lineHeight)
     if (Number.isInteger(obj.margin)) s.margin = clamp(obj.margin, 0, MARGINS.length - 1)
-    for (const k of ['justify', 'hyphenate', 'focus'])
+    for (const k of ['justify', 'hyphenate', 'focus', 'dropCaps', 'haptics'])
       if (typeof obj[k] === 'boolean') s[k] = obj[k]
     if (has(PAGES, obj.pages)) s.pages = obj.pages
     else if (obj.spread === false) s.pages = 'one' // setting from an earlier version
@@ -158,8 +160,11 @@ export function onSettings(fn) {
 const darkQuery = matchMedia('(prefers-color-scheme: dark)')
 
 // True when the app itself should be dark (its own setting, else the device).
+// "Evening" is light by day and dark from seven in the evening to seven in the morning.
+const isEvening = (d = new Date()) => d.getHours() >= 19 || d.getHours() < 7
+
 export function isDarkScheme(s = state) {
-  return s.appearance === 'dark' || (s.appearance === 'system' && darkQuery.matches)
+  return s.appearance === 'dark' || (s.appearance === 'system' && darkQuery.matches) || (s.appearance === 'evening' && isEvening())
 }
 
 export function resolveThemeKey(s = state) {
@@ -169,6 +174,9 @@ export function resolveThemeKey(s = state) {
 
 export function onSystemThemeChange(fn) {
   darkQuery.addEventListener('change', fn)
+  // The clock can change the answer too (Evening), so look once a minute.
+  let last = isDarkScheme()
+  setInterval(() => { const now = isDarkScheme(); if (now !== last) { last = now; fn() } }, 60_000)
 }
 
 // Library and dialogs follow the app setting. The reader overrides this with

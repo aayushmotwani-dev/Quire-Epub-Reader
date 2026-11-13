@@ -78,6 +78,11 @@ export function readingCSS(s, themeKey) {
     [align="right"] { text-align: right !important; }
     [align="center"] { text-align: center !important; }
     ::selection { background: ${t.sel}; }
+    ${s.dropCaps ? `
+    :is(h1, h2, h3, header, hgroup) + p, :is(h1, h2, h3, header, hgroup) + :is(div, section) > p:first-child { text-indent: 0 !important; }
+    :is(h1, h2, h3, header, hgroup) + p::first-letter, :is(h1, h2, h3, header, hgroup) + :is(div, section) > p:first-child::first-letter {
+      float: left; font-size: 3.15em; line-height: .82; padding: .07em .09em 0 0; font-weight: 500; font-variant: normal; text-transform: uppercase;
+    }` : ''}
     ${themeKey === 'night' ? 'img, svg image, video { filter: brightness(.86); }' : ''}
   `
   return [before, after]

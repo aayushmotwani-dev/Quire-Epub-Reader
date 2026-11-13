@@ -5,7 +5,7 @@
 import * as db from './db.js'
 import { $, el, showSheet, closeSheet, toast } from './ui.js'
 import { makeThumb, readOriginal } from './importer.js'
-import { searchBooks, fetchCover, coverUrl } from './metadata.js'
+import { searchBooks, fetchCover } from './metadata.js'
 
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024
 
@@ -15,6 +15,13 @@ let previewURL = ''
 let onSaved = () => {}
 let searching = null    // AbortController of the running search
 let inited = false
+let thumbURLs = []      // result thumbnails, freed when the list is replaced
+
+function clearResults() {
+  for (const u of thumbURLs) URL.revokeObjectURL(u)
+  thumbURLs = []
+  $('#edit-results').replaceChildren()
+}
 
 function setCover(thumb) {
   cover = thumb || null
@@ -87,7 +94,7 @@ async function runSearch() {
   const list = $('#edit-results')
   searching?.abort()
   const ctl = searching = new AbortController()
-  list.replaceChildren()
+  clearResults()
   if (!title.trim() && !author.trim()) return status('Type a title or an author first.')
   status('Searching…')
   let results
@@ -101,9 +108,13 @@ async function runSearch() {
   if (!results.length) return status('Nothing found. Try a shorter title, or only the author.')
   status(`${results.length} ${results.length === 1 ? 'match' : 'matches'}. Pick one to fill in the details.`)
   list.replaceChildren(...results.map(r => {
-    const thumb = coverUrl(r.coverId, 'S')
-    const img = thumb ? el('img', { src: thumb, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }) : null
-    img?.addEventListener('error', () => img.remove())
+    const img = r.coverId ? el('img', { alt: '', hidden: '' }) : null
+    if (img) fetchCover(r.coverId, 'S').then(blob => {
+      if (ctl.signal.aborted || !img.isConnected) return
+      const url = URL.createObjectURL(blob)
+      thumbURLs.push(url)
+      img.src = url; img.hidden = false
+    }, () => img.remove())
     return el('li', {}, el('button', { type: 'button', class: 'edit-result', onclick: () => pick(r) },
       el('span', { class: 'edit-result-cover' }, img),
       el('span', { class: 'edit-result-text' },
@@ -135,6 +146,6 @@ export function editBook(target, { saved = () => {} } = {}) {
   $('#edit-author').value = target.author || ''
   setCover(target.cover)
   status('')
-  $('#edit-results').replaceChildren()
-  showSheet('sheet-edit', { onClose: () => { searching?.abort(); book = null; setCover(null) } })
+  clearResults()
+  showSheet('sheet-edit', { onClose: () => { searching?.abort(); book = null; setCover(null); clearResults() } })
 }

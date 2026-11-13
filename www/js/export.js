@@ -1,5 +1,6 @@
 import * as db from './db.js'
 import { toast } from './ui.js'
+import { saveFile } from './share.js'
 
 // Highlights and notes as a Markdown file, in book order.
 export async function exportHighlights(book) {
@@ -24,23 +25,5 @@ export async function exportHighlights(book) {
   const name = `${book.title.replace(/[\\/:*?"<>|]+/g, '').slice(0, 80) || 'Highlights'} - highlights.md`
   const file = new File([lines.join('\n')], name, { type: 'text/markdown' })
 
-  // Phones: the share sheet is the natural way to save or send a file.
-  if (matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: name })
-      return
-    } catch (e) {
-      if (e?.name === 'AbortError') return
-      // fall through to a normal download
-    }
-  }
-  const url = URL.createObjectURL(file)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  document.body.append(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 10_000)
-  toast(`Saved ${items.length} ${items.length === 1 ? 'highlight' : 'highlights'}`)
+  if (await saveFile(file)) toast(`Saved ${items.length} ${items.length === 1 ? 'highlight' : 'highlights'}`)
 }

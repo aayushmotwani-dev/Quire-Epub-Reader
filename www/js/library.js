@@ -3,16 +3,38 @@ import { el, $, iconButton, toast, confirmDialog } from './ui.js'
 import { getFlag, setFlag } from './settings.js'
 import { exportHighlights } from './export.js'
 import { editBook } from './edit-book.js'
+import { openDetail } from './book-detail.js'
+import { openStats } from './stats-ui.js'
 
 const coverURLs = new Map() // book id -> object URL, revoked when the book leaves
 
 let books = []
 let query = ''
 let sort = getFlag('sort', 'recent')
-let handlers = { open: () => {}, add: () => {} }
+let handlers = { open: () => {}, add: () => {}, jump: () => {} }
 
-export function initLibrary({ onOpen, onAdd }) {
-  handlers = { open: onOpen, add: onAdd }
+export function initLibrary({ onOpen, onAdd, onJump }) {
+  handlers = { open: onOpen, add: onAdd, jump: onJump }
+  $('#open-stats').addEventListener('click', () => {
+    const year = new Date().getFullYear()
+    const done = books.filter(isFinished)
+    openStats({ finishedTotal: done.length, finishedThisYear: done.filter(b => new Date(finishedTime(b)).getFullYear() === year).length })
+  })
+  // Hold a cover (or right-click it) for the book's own page.
+  const grid = $('#grid')
+  let hold = 0, held = false
+  const bookOf = target => { const li = target.closest?.('.book'); return li ? books.find(b => b.id === li.dataset.id) : null }
+  grid.addEventListener('contextmenu', e => { const b = bookOf(e.target); if (b && e.target.closest('.book-open')) { e.preventDefault(); clearTimeout(hold); held = true; showDetail(b) } })
+  grid.addEventListener('pointerdown', e => {
+    held = false
+    if (e.pointerType === 'mouse' || !e.target.closest('.book-open')) return
+    const b = bookOf(e.target)
+    clearTimeout(hold)
+    hold = setTimeout(() => { if (b) { held = true; showDetail(b) } }, 520)
+  })
+  for (const type of ['pointerup', 'pointercancel', 'pointerleave', 'pointermove'])
+    grid.addEventListener(type, e => { if (type !== 'pointermove' || Math.abs(e.movementX) + Math.abs(e.movementY) > 6) clearTimeout(hold) })
+  grid.addEventListener('click', e => { if (held) { held = false; e.preventDefault(); e.stopPropagation() } }, true)
   $('#lib-search').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); renderShelf() })
   const sortSel = $('#lib-sort')
   sortSel.value = sort
@@ -197,10 +219,10 @@ function renderHero() {
     .filter(b => b.openedAt && !isFinished(b))
     .sort((a, b) => b.openedAt - a.openedAt)[0]
   host.hidden = !current
-  if (!current) return host.replaceChildren()
+  if (!current) { setAmbient(null); return host.replaceChildren() }
   const pct = Math.floor(current.progress * 100)
   host.replaceChildren(
-    el('button', { type: 'button', class: 'now-cover', 'aria-label': `Continue reading ${current.title}`, onclick: () => handlers.open(current.id) }, cover(current, 'hero')),
+    el('button', { type: 'button', class: 'now-cover', 'data-cover-of': current.id, 'aria-label': `Continue reading ${current.title}`, onclick: e => handlers.open(current.id, e.currentTarget.firstElementChild) }, cover(current, 'hero')),
     el('div', { class: 'now-body' },
       el('p', { class: 'now-kicker', text: 'Continue reading' }),
       el('h2', { class: 'now-title', text: current.title }),
@@ -210,7 +232,8 @@ function renderHero() {
           el('span', { text: String(pct) }), el('span', { class: 'dot-unit', text: '%' })),
         segBar(current.marks, current.progress)),
       current.chapter ? el('p', { class: 'now-chapter', text: current.chapter }) : null,
-      el('button', { type: 'button', class: 'btn btn-solid', text: 'Continue', onclick: () => handlers.open(current.id) })))
+      el('button', { type: 'button', class: 'btn btn-solid', text: 'Continue', onclick: () => handlers.open(current.id, host.querySelector('.cover')) })))
+  setAmbient(current)
 }
 
 // Progress bar split at chapter boundaries (Nothing's segmented meters,
@@ -275,8 +298,8 @@ function renderShelf() {
     grid.replaceChildren(el('li', { class: 'no-match', text: `Nothing matches “${query}”.` }))
     return
   }
-  grid.replaceChildren(...list.map(book => el('li', { class: 'book' + (isFinished(book) ? ' is-done' : ''), style: `--p:${Math.max(0, Math.min(1, book.progress || 0))}` },
-    el('button', { type: 'button', class: 'book-open', 'aria-label': `Open ${book.title}`, onclick: () => handlers.open(book.id) }, cover(book)),
+  grid.replaceChildren(...list.map(book => el('li', { class: 'book' + (isFinished(book) ? ' is-done' : ''), 'data-id': book.id, style: `--p:${Math.max(0, Math.min(1, book.progress || 0))}` },
+    el('button', { type: 'button', class: 'book-open', 'aria-label': `Open ${book.title}`, onclick: e => handlers.open(book.id, e.currentTarget.firstElementChild) }, cover(book)),
     el('div', { class: 'book-meta' },
       el('p', { class: 'book-title', text: book.title, title: book.title }),
       iconButton('more', `More for ${book.title}`, e => openMenu(e.currentTarget, book), { class: 'book-more' })),
@@ -292,6 +315,7 @@ function openMenu(anchor, book) {
   menu.dataset.id = book.id
   const finished = isFinished(book)
   menu.replaceChildren(
+    el('button', { type: 'button', role: 'menuitem', icon: 'contents', onclick: () => { closeMenu(); showDetail(book) } }, el('span', { text: 'Book page' })),
     el('button', { type: 'button', role: 'menuitem', icon: finished ? 'minus' : 'check', onclick: async () => {
       closeMenu()
       await db.updateBook(book.id, { finishedAt: finished ? 0 : Date.now() })
@@ -300,12 +324,7 @@ function openMenu(anchor, book) {
     } }, el('span', { text: finished ? 'Mark as not finished' : 'Mark as finished' })),
     el('button', { type: 'button', role: 'menuitem', icon: 'note', onclick: () => {
       closeMenu()
-      editBook(book, { saved: async id => {
-        // The cover may have changed: drop the cached picture so the shelf redraws it.
-        const old = coverURLs.get(id)
-        if (old) { URL.revokeObjectURL(old); coverURLs.delete(id) }
-        await refreshLibrary()
-      } })
+      edit(book)
     } }, el('span', { text: 'Edit details' })),
     el('button', { type: 'button', role: 'menuitem', icon: 'export', onclick: async () => { closeMenu(); await exportHighlights(book) } }, el('span', { text: 'Export highlights' })),
     el('button', { type: 'button', role: 'menuitem', class: 'danger', icon: 'trash', onclick: async () => { closeMenu(); await removeBook(book) } }, el('span', { text: 'Remove from library' })))
@@ -337,4 +356,61 @@ async function removeBook(book) {
   await db.removeBook(book.id)
   await refreshLibrary()
   toast('Removed from library')
+}
+
+function edit(book) {
+  editBook(book, { saved: async id => {
+    // The cover may have changed: drop the cached picture so the shelf redraws it.
+    const old = coverURLs.get(id)
+    if (old) { URL.revokeObjectURL(old); coverURLs.delete(id) }
+    await refreshLibrary()
+  } })
+}
+
+function showDetail(book) {
+  openDetail(book, {
+    coverEl: cover(book, 'hero'),
+    finished: isFinished(book),
+    onRead: () => handlers.open(book.id),
+    onEdit: () => edit(book),
+    onJump: cfi => handlers.jump(book.id, cfi),
+  })
+}
+
+// Where a book sits on screen, for the closing animation: the big cover if it
+// is the one being read, otherwise its place on the shelf.
+export function coverElementFor(id) {
+  const hero = document.querySelector('.now-cover')
+  if (hero?.dataset.coverOf === id) return hero.firstElementChild
+  for (const li of document.querySelectorAll('#grid .book')) if (li.dataset.id === id) return li.querySelector('.cover')
+  return null
+}
+
+// ---------------------------------------------------------------- ambient
+// The home screen picks up a soft tint from the cover of the book being read.
+let ambientFor = ''
+async function setAmbient(book) {
+  const root = document.body
+  const key = book?.cover?.buffer ? `${book.id}:${book.cover.buffer.byteLength}` : ''
+  if (key === ambientFor) return
+  ambientFor = key
+  if (!key) { root.style.removeProperty('--ambient'); return }
+  try {
+    const bmp = await createImageBitmap(new Blob([book.cover.buffer], { type: book.cover.type || 'image/jpeg' }))
+    const c = document.createElement('canvas')
+    c.width = c.height = 16
+    const ctx = c.getContext('2d', { willReadFrequently: true })
+    ctx.drawImage(bmp, 0, 0, 16, 16)
+    bmp.close?.()
+    const d = ctx.getImageData(0, 0, 16, 16).data
+    // Average, leaning on the colourful pixels so a grey border does not win.
+    let r = 0, g = 0, b = 0, n = 0
+    for (let i = 0; i < d.length; i += 4) {
+      const max = Math.max(d[i], d[i + 1], d[i + 2]), min = Math.min(d[i], d[i + 1], d[i + 2])
+      const w = 0.15 + (max - min) / 255
+      r += d[i] * w; g += d[i + 1] * w; b += d[i + 2] * w; n += w
+    }
+    if (ambientFor !== key || !n) return
+    root.style.setProperty('--ambient', `rgb(${Math.round(r / n)} ${Math.round(g / n)} ${Math.round(b / n)})`)
+  } catch { root.style.removeProperty('--ambient') }
 }

@@ -122,12 +122,13 @@ ipcMain.on('chrome-color', (_e, color) => {
 // Book details: one cover image from Open Library, asked for by its number.
 // The address is built here, never taken from the page, and only an image of a
 // sensible size from Open Library or the Internet Archive is handed back.
-ipcMain.handle('fetch-cover', async (e, coverId) => {
+ipcMain.handle('fetch-cover', async (e, coverId, size = 'L') => {
   if (!win || e.sender !== win.webContents) return null
   if (!String(e.senderFrame?.url ?? '').startsWith('app://quire/')) return null
   if (!Number.isSafeInteger(coverId) || coverId <= 0) return null
+  if (!['S', 'M', 'L'].includes(size)) return null
   try {
-    const res = await net.fetch(`https://covers.openlibrary.org/b/id/${coverId}-L.jpg?default=false`, { credentials: 'omit' })
+    const res = await net.fetch(`https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg?default=false`, { credentials: 'omit' })
     if (!res.ok) return null
     const host = new URL(res.url).hostname
     if (!/(^|\.)(openlibrary\.org|archive\.org)$/.test(host)) return null

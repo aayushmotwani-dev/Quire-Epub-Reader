@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- Scripts only from this site: a book can never run code here. Keep in sync with vercel.json. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' blob:; img-src 'self' blob: data: https://covers.openlibrary.org https://*.archive.org; font-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' blob: data: https://openlibrary.org https://covers.openlibrary.org https://*.archive.org; frame-src 'self' blob:; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' blob:; img-src 'self' blob: data:; font-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' blob: data: https://openlibrary.org https://covers.openlibrary.org https://*.archive.org; frame-src 'self' blob:; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <title>Quire</title>
@@ -39,6 +39,9 @@
     <div class="lib-actions">
       <button type="button" id="open-dict" class="icon-btn" aria-label="Dictionary" title="Dictionary">
         <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5h10.5a2.5 2.5 0 0 1 2.5 2.5v12.5H7.5A2.5 2.5 0 0 1 5 17V4.5z"/><path d="M5 17a2.5 2.5 0 0 1 2.5-2.5H18"/><path d="M9 8.5h5"/></svg>
+      </button>
+      <button type="button" id="open-stats" class="icon-btn" aria-label="Reading stats" title="Reading stats">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="currentColor"><circle cx="6" cy="18" r="1.7"/><circle cx="6" cy="13" r="1.7"/><circle cx="12" cy="18" r="1.7"/><circle cx="12" cy="13" r="1.7"/><circle cx="12" cy="8" r="1.7"/><circle cx="18" cy="18" r="1.7"/><circle cx="18" cy="13" r="1.7"/><circle cx="18" cy="8" r="1.7"/><circle cx="18" cy="3.5" r="1.7"/></svg>
       </button>
       <button type="button" id="lib-full" class="icon-btn" aria-label="Full window" title="Full window (F11)" hidden>
         <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15"/></svg>
@@ -201,6 +204,8 @@
       </fieldset>
       <label class="row switch-row"><span>Justify text</span><input type="checkbox" id="aa-justify" class="switch"></label>
       <label class="row switch-row"><span>Hyphenation</span><input type="checkbox" id="aa-hyphenate" class="switch"></label>
+      <label class="row switch-row"><span>Drop caps</span><input type="checkbox" id="aa-dropCaps" class="switch"></label>
+      <label class="row switch-row haptics-row"><span>Page turn haptics</span><input type="checkbox" id="aa-haptics" class="switch"></label>
       <label class="row switch-row focus-row"><span><span class="switch-title">Focus mode</span><span class="switch-sub">Only the text: no running heads, page info, ribbon or pointer. Tap or click the middle of the page for the menu.</span></span><input type="checkbox" id="aa-focus" class="switch"></label>
       <fieldset class="row turn-row" id="aa-turn-row">
         <legend>Turning pages</legend>
@@ -209,6 +214,46 @@
       </fieldset>
     </div>
     <p class="fixed-only sheet-note">This book has a fixed layout, so only the page theme applies.</p>
+  </div>
+</aside>
+
+<aside id="sheet-detail" class="sheet panel detail-sheet" role="dialog" aria-modal="true" aria-labelledby="detail-title" hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <header class="sheet-head">
+    <h2 id="detail-title">Book page</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Close" title="Close">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </header>
+  <div class="sheet-body">
+    <div id="detail-top" class="detail-top"></div>
+    <div id="detail-notes" class="detail-notes"></div>
+  </div>
+</aside>
+
+<aside id="sheet-stats" class="sheet panel stats-sheet" role="dialog" aria-modal="true" aria-labelledby="stats-title" hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <header class="sheet-head">
+    <h2 id="stats-title">Reading stats</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Close" title="Close">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </header>
+  <div class="sheet-body" id="stats-body"></div>
+</aside>
+
+<aside id="sheet-quote" class="sheet panel quote-sheet" role="dialog" aria-modal="true" aria-labelledby="quote-title" hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <header class="sheet-head">
+    <h2 id="quote-title">Quote card</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Close" title="Close">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </header>
+  <div class="sheet-body">
+    <canvas id="quote-canvas" class="quote-canvas" width="1080" height="1350" role="img" aria-label="Preview of the quote card"></canvas>
+    <div id="quote-styles" class="quote-styles" role="group" aria-label="Card style"></div>
+    <button type="button" id="quote-save" class="btn btn-solid quote-save">Save or share</button>
   </div>
 </aside>
 

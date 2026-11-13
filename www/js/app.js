@@ -1,5 +1,6 @@
-import { initLibrary, refreshLibrary } from './library.js'
-import { initReader, openBook, closeBook, isReading, dictCard } from './reader.js'
+import { initLibrary, refreshLibrary, coverElementFor } from './library.js'
+import { playOpen, playClose } from './openfx.js'
+import { initReader, openBook, closeBook, isReading, dictCard, jumpTo } from './reader.js'
 import { lookup, cleanWord } from './dictionary.js'
 import { importFile, requestPersistence, ImportError } from './importer.js'
 import { openDB } from './db.js'
@@ -26,15 +27,23 @@ function parseRoute() {
 async function route() {
   const r = parseRoute()
   if (r.name === 'read') {
+    const fxDone = openFx; openFx = null
+    const jump = pendingJump?.id === r.id ? pendingJump.cfi : null
+    pendingJump = null
     showView('reader')
     const ok = await openBook(r.id)
+    fxDone?.()
     if (!ok) { setFlag('resume', null); location.replace('#/'); return }
     setFlag('resume', r.id)   // fast resume: reopen this book next time
+    lastRead = r.id
+    if (jump) jumpTo(jump)
   } else {
-    if (isReading()) await closeBook()
+    const wasReading = isReading()
+    if (wasReading) await closeBook()
     setFlag('resume', null)
     showView('library')
     await refreshLibrary()
+    if (wasReading && lastRead) playClose(coverElementFor(lastRead))
   }
 }
 
@@ -49,7 +58,12 @@ function showView(name) {
   }
 }
 
-export function goRead(id) {
+let openFx = null       // finishes the cover animation once the book is up
+let pendingJump = null  // { id, cfi }: open the book at a highlight
+let lastRead = ''
+
+export function goRead(id, coverEl) {
+  if (coverEl) openFx = playOpen(coverEl)
   enteredReaderFromLibrary = true
   location.hash = `#/read/${id}`
 }
@@ -382,7 +396,7 @@ async function boot() {
     return
   }
 
-  initLibrary({ onOpen: goRead, onAdd: pickFiles })
+  initLibrary({ onOpen: goRead, onAdd: pickFiles, onJump: (id, cfi) => { pendingJump = { id, cfi }; goRead(id) } })
   initReader({ exit: goLibrary })
   $('#file-input').addEventListener('change', e => importFiles(e.target.files))
 

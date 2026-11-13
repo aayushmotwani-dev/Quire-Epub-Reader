@@ -33,18 +33,19 @@ export async function searchBooks({ title = '', author = '' }, { signal } = {}) 
 
 const isImage = blob => blob && blob.size > 0 && blob.size <= MAX_COVER_BYTES && /^image\//.test(blob.type || 'image/jpeg')
 
-// A cover is fetched as bytes so it can be kept on the device. A browser may
-// refuse that for another site's image, so the desktop and phone apps have
-// their own, narrowly scoped, way to fetch it.
-export async function fetchCover(coverId) {
-  const url = coverUrl(coverId, 'L')
+// A cover is always fetched as bytes, never shown straight from its address:
+// that keeps the app's rule that pages (and books) may not load images from
+// the internet. A browser may refuse the fetch for another site's image, so the
+// desktop and phone apps have their own, narrowly scoped, way to do it.
+export async function fetchCover(coverId, size = 'L') {
+  const url = coverUrl(coverId, size)
   if (!url) throw new Error('No cover')
   try {
     const res = await fetch(url, { credentials: 'omit', referrerPolicy: 'no-referrer' })
     if (res.ok) { const blob = await res.blob(); if (isImage(blob)) return blob }
   } catch { /* try the app's own route */ }
   try {
-    const out = await window.quireNative?.fetchCover?.(coverId)
+    const out = await window.quireNative?.fetchCover?.(coverId, size)
     if (out?.data) { const blob = new Blob([out.data], { type: out.type || 'image/jpeg' }); if (isImage(blob)) return blob }
   } catch { /* next */ }
   try {
