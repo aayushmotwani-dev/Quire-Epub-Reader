@@ -92,7 +92,7 @@
   <section id="empty" class="empty" hidden>
     <p class="dot-number empty-number" aria-hidden="true">0</p>
     <h2>No books yet</h2>
-    <p>Add EPUB files from this device. They stay here, and work without a connection.</p>
+    <p>Add EPUB files from this device. They stay here, and work without a connection. PDFs with real text are turned into EPUBs as they are added.</p>
     <button type="button" class="btn btn-solid" data-action="add">Add books</button>
     <p class="drop-note">Or drop them anywhere on this window.</p>
   </section>
@@ -370,6 +370,18 @@
       <span class="setting-label">Your name</span>
       <input type="text" id="set-name" class="text-input" maxlength="24" autocomplete="given-name" spellcheck="false" placeholder="Shown on the welcome screen">
     </label>
+    <div class="setting backup-block">
+      <span class="setting-label">Backup</span>
+      <p class="setting-note">Everything in Quire lives on this device. A backup is one file with your books, your place in each, highlights, notes, goals, stats and settings. Keep it somewhere safe, or use it to move to another device.</p>
+      <label class="row switch-row"><span id="backup-books-label">Include the books</span><input type="checkbox" id="backup-books" class="switch" checked></label>
+      <p class="setting-note">Without the books the file is tiny, but it can only restore onto a device that already has the same books.</p>
+      <div class="backup-actions">
+        <button type="button" id="backup-save" class="btn btn-quiet">Save a backup</button>
+        <button type="button" id="backup-restore" class="btn btn-quiet">Restore a backup</button>
+      </div>
+      <input type="file" id="backup-file" hidden>
+      <p id="backup-status" class="setting-note" aria-live="polite" hidden></p>
+    </div>
     <details class="advanced" id="advanced">
       <summary><span>Advanced</span><span class="advanced-sub">Style, type, colour and how pages behave</span></summary>
       <fieldset class="setting">
@@ -423,7 +435,7 @@
     </details>
     <section class="credits" aria-label="Credits">
       <h3>Credits</h3>
-      <p>Meanings come from Princeton WordNet 3.0. Pronunciations come from the CMU Pronouncing Dictionary. Typefaces: Geist, Doto, Literata, Source Serif, Atkinson Hyperlegible and Courier Prime, all under the SIL Open Font License. Pages are laid out with foliate-js (MIT).</p>
+      <p>Meanings come from Princeton WordNet 3.0. Pronunciations come from the CMU Pronouncing Dictionary. Typefaces: Geist, Doto, Literata, Source Serif, EB Garamond, Lora, Crimson Pro, Bitter, Inter, Atkinson Hyperlegible, OpenDyslexic and Courier Prime, all under the SIL Open Font License. Pages are laid out with foliate-js (MIT). PDFs are read with pdf.js (Apache 2.0).</p>
       <p>Your books, highlights and notes stay on this device. Quire never sends a word you look up anywhere.</p>
     </section>
   </div>
@@ -475,7 +487,7 @@
 </dialog>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<div id="drop-overlay" class="drop-overlay" aria-hidden="true"><p>Drop EPUB files to add them</p></div>
-<input type="file" id="file-input" accept=".epub,application/epub+zip" multiple hidden>
+<div id="drop-overlay" class="drop-overlay" aria-hidden="true"><p>Drop EPUB or PDF files to add them</p></div>
+<input type="file" id="file-input" accept=".epub,application/epub+zip,.pdf,application/pdf" multiple hidden>
 </body>
 </html>

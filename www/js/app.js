@@ -1,5 +1,7 @@
 import { initLibrary, refreshLibrary, coverElementFor } from './library.js'
 import { playOpen, playClose } from './openfx.js'
+import { initBackupUI, refreshBackupUI } from './backup-ui.js'
+import { isPdf, pdfToEpub, ConvertError } from './pdf2epub.js'
 import { initReader, openBook, closeBook, isReading, dictCard, jumpTo } from './reader.js'
 import { lookup, cleanWord } from './dictionary.js'
 import { importFile, requestPersistence, ImportError } from './importer.js'
@@ -83,11 +85,24 @@ async function importFiles(files) {
     if (list.length > 1) toast(`Adding ${i + 1} of ${list.length}…`, { duration: 0 })
     else toast(`Adding ${file.name || 'book'}…`, { duration: 0 })
     try {
-      const { book, status } = await importFile(file)
+      let epub = file
+      // A PDF is rebuilt as an EPUB first, here on the device, then added like any other book.
+      if (/\.pdf$/i.test(file.name || '') || file.type === 'application/pdf' || await isPdf(file)) {
+        const short = (file.name || 'PDF').replace(/\.pdf$/i, '').slice(0, 40)
+        let shown = 0
+        epub = await pdfToEpub(file, { onProgress: (n, total) => {
+          const now = performance.now()
+          if (now - shown < 250 && n !== total) return
+          shown = now
+          toast(`Converting “${short}”: page ${n} of ${total}…`, { duration: 0 })
+        } })
+      }
+      const { book, status } = await importFile(epub)
       ;(status === 'added' ? added : existing).push(book)
     } catch (e) {
-      failed.push(e instanceof ImportError ? e.message : `${file.name || 'A file'} could not be added.`)
-      if (!(e instanceof ImportError)) console.error(e)
+      const known = e instanceof ImportError || e instanceof ConvertError
+      failed.push(known ? e.message : `${file.name || 'A file'} could not be added.`)
+      if (!known) console.error(e)
     }
   }
   if (added.length) requestPersistence()
@@ -337,7 +352,8 @@ function initSettingsSheet() {
   }
   onSettings(sync)
   sync()
-  $('#open-settings').addEventListener('click', () => showSheet('sheet-settings'))
+  $('#open-settings').addEventListener('click', () => { refreshBackupUI(); showSheet('sheet-settings') })
+  initBackupUI({ restored: async () => { applyAppMode(); applyLook(); if (!isReading()) await refreshLibrary() } })
 }
 
 // ---------------------------------------------------------------- dictionary

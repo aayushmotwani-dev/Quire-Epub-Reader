@@ -15,8 +15,14 @@ export const FONTS = {
   publisher: { name: 'Original', family: null },
   literata: { name: 'Literata', family: "'Quire Literata', Georgia, serif", file: 'literata', opsz: true },
   source: { name: 'Source Serif', family: "'Quire Source Serif', Georgia, serif", file: 'source-serif-4', opsz: true },
+  garamond: { name: 'EB Garamond', family: "'Quire Garamond', Georgia, serif", file: 'eb-garamond' },
+  lora: { name: 'Lora', family: "'Quire Lora', Georgia, serif", file: 'lora' },
+  crimson: { name: 'Crimson Pro', family: "'Quire Crimson', Georgia, serif", file: 'crimson-pro' },
+  bitter: { name: 'Bitter', family: "'Quire Bitter', Georgia, serif", file: 'bitter' },
   geist: { name: 'Geist', family: "'Quire Geist', system-ui, sans-serif", file: 'geist', noItalic: true },
   atkinson: { name: 'Atkinson', family: "'Quire Atkinson', system-ui, sans-serif", file: 'atkinson-hyperlegible-next' },
+  inter: { name: 'Inter', family: "'Quire Inter', system-ui, sans-serif", file: 'inter' },
+  dyslexic: { name: 'OpenDyslexic', family: "'Quire Dyslexic', system-ui, sans-serif", file: 'opendyslexic', weights: [400, 700], noExt: true },
   typewriter: { name: 'Typewriter', family: "'Quire Typewriter', 'Courier New', monospace", file: 'courier-prime', weights: [400, 700] },
 }
 

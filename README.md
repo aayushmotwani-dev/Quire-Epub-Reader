@@ -28,6 +28,12 @@ Your books stay on your device. No account, no server, no tracking.
 
 **A dictionary of its own.** The book icon on the home screen opens the same offline dictionary without a book open: look up any word, hear it, and tap a recent word to see it again.
 
+**Backup and restore.** Settings has a Backup block: one file with your books, your place in each, highlights, notes, goals, stats and settings. Restore it on the same device or another one. Restoring adds what is missing and never deletes.
+
+**PDF to EPUB.** Add a PDF like any other book and Quire rebuilds it as a reflowable EPUB on your device: paragraphs rejoined, running headers and page numbers removed, chapters from the PDF's outline or its headings, the first page as the cover. It works on PDFs that contain real text. Scanned PDFs (pictures of pages) are refused with an explanation, and pictures, tables and complex layouts inside a PDF are not carried over.
+
+**Twelve reading typefaces.** Literata, Source Serif, EB Garamond, Lora, Crimson Pro, Bitter, Geist, Inter, Atkinson Hyperlegible, OpenDyslexic, Courier Prime, or the book's own.
+
 **A book that opens.** Tap a cover and it grows toward you while the page comes up behind it; close the book and it settles back on the shelf. The home screen takes a soft tint from the cover you are reading.
 
 **A page for every book.** Hold a cover, or choose Book page in its menu: progress, time left, and every highlight and note in one place. Tap a highlight to open the book there.

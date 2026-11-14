@@ -1256,3 +1256,24 @@ body:not(.reading) { background-image: radial-gradient(90% 560px at 22% 0, color
 .stat .dot-number { font-size: clamp(30px, 8.5vw, 40px); line-height: 1; white-space: nowrap; display: flex; align-items: baseline; gap: 5px; }
 .stat .dot-unit { font-size: 12.5px; margin: 0; letter-spacing: 0; }
 .edit-result-cover img[hidden] { display: none; }
+
+/* ---------------------------------------------------------------- backup */
+.backup-block .switch-row { margin-top: 10px; }
+.backup-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+#backup-status { margin-top: 12px; }
+
+/* ---------------------------------------------------------------- more reading fonts (previews in the Aa panel) */
+@font-face { font-family: 'Quire Garamond'; src: url(../fonts/eb-garamond-latin-wght-normal.woff2) format('woff2'); font-weight: 200 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Quire Lora'; src: url(../fonts/lora-latin-wght-normal.woff2) format('woff2'); font-weight: 200 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Quire Crimson'; src: url(../fonts/crimson-pro-latin-wght-normal.woff2) format('woff2'); font-weight: 200 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Quire Bitter'; src: url(../fonts/bitter-latin-wght-normal.woff2) format('woff2'); font-weight: 200 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Quire Inter'; src: url(../fonts/inter-latin-wght-normal.woff2) format('woff2'); font-weight: 200 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Quire Dyslexic'; src: url(../fonts/opendyslexic-latin-400-normal.woff2) format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+.font-opt[data-font="garamond"] .font-name { font-family: 'Quire Garamond', serif; }
+.font-opt[data-font="lora"] .font-name { font-family: 'Quire Lora', serif; }
+.font-opt[data-font="crimson"] .font-name { font-family: 'Quire Crimson', serif; }
+.font-opt[data-font="bitter"] .font-name { font-family: 'Quire Bitter', serif; }
+.font-opt[data-font="inter"] .font-name { font-family: 'Quire Inter', sans-serif; }
+.font-opt[data-font="dyslexic"] .font-name { font-family: 'Quire Dyslexic', sans-serif; }
+
+@media (min-width: 420px) { .font-list { grid-template-columns: 1fr 1fr; column-gap: 6px; } }
