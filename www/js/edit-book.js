@@ -4,7 +4,7 @@
 
 import * as db from './db.js'
 import { $, el, showSheet, closeSheet, toast } from './ui.js'
-import { makeThumb, readOriginal } from './importer.js'
+import { makeThumb, readOriginal, cleanGenres, cleanSeriesIndex } from './importer.js'
 import { searchBooks, fetchCover } from './metadata.js'
 
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024
@@ -66,6 +66,9 @@ function init() {
       const o = await readOriginal(book.id)
       $('#edit-name').value = o.title
       $('#edit-author').value = o.author
+      $('#edit-series').value = o.series || ''
+      $('#edit-number').value = o.seriesIndex ?? ''
+      $('#edit-genres').value = (o.genres || []).join(', ')
       setCover(o.cover)
       toast('Original details restored. Press Save to keep them.')
     } catch { toast('The original details could not be read') }
@@ -78,7 +81,10 @@ function init() {
     const author = $('#edit-author').value.replace(/\s+/g, ' ').trim().slice(0, 300)
     if (!title) { $('#edit-name').focus(); return toast('A book needs a title') }
     try {
-      await db.updateBook(book.id, { title, author, cover })
+      const series = $('#edit-series').value.replace(/\s+/g, ' ').trim().slice(0, 120)
+      const seriesIndex = series ? cleanSeriesIndex($('#edit-number').value) : null
+      const genres = cleanGenres($('#edit-genres').value.split(','))
+      await db.updateBook(book.id, { title, author, cover, series, seriesIndex, genres })
     } catch { return toast('The details could not be saved') }
     const id = book.id
     closeSheet()
@@ -127,6 +133,7 @@ async function pick(r) {
   const forBook = book
   $('#edit-name').value = r.title
   if (r.author) $('#edit-author').value = r.author
+  if (r.genres?.length && !$('#edit-genres').value.trim()) $('#edit-genres').value = r.genres.join(', ')
   if (!r.coverId) return status('Details filled in. This match has no cover. Press Save to keep them.')
   status('Getting the cover…')
   try {
@@ -138,12 +145,16 @@ async function pick(r) {
   }
 }
 
-export function editBook(target, { saved = () => {} } = {}) {
+export function editBook(target, { saved = () => {}, knownSeries = [] } = {}) {
   init()
   book = target
   onSaved = saved
   $('#edit-name').value = target.title || ''
   $('#edit-author').value = target.author || ''
+  $('#edit-series').value = target.series || ''
+  $('#edit-number').value = target.seriesIndex ?? ''
+  $('#edit-genres').value = (target.genres || []).join(', ')
+  $('#edit-series-list').replaceChildren(...knownSeries.map(n => el('option', { value: n })))
   setCover(target.cover)
   status('')
   clearResults()

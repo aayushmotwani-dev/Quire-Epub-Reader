@@ -74,7 +74,7 @@
         <label class="field search-field">
           <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="6.2"/><path d="M20 20l-4.6-4.6"/></svg>
           <span class="sr">Search your library</span>
-          <input id="lib-search" type="search" placeholder="Title or author" autocomplete="off" spellcheck="false">
+          <input id="lib-search" type="search" placeholder="Title, author or series" autocomplete="off" spellcheck="false">
         </label>
         <label class="field select-field">
           <span class="sr">Sort by</span>
@@ -82,10 +82,22 @@
             <option value="recent">Recent</option>
             <option value="title">Title</option>
             <option value="author">Author</option>
+            <option value="added">Date added</option>
           </select>
         </label>
       </div>
     </div>
+    <div class="filters" role="group" aria-label="Filter your library">
+      <div class="chips" id="f-status" role="group" aria-label="Reading status"></div>
+      <div class="filter-selects">
+        <label class="field select-field filter-select"><span class="sr">Author</span><select id="f-author"></select></label>
+        <label class="field select-field filter-select"><span class="sr">Genre</span><select id="f-genre"></select></label>
+        <label class="field select-field filter-select"><span class="sr">Series</span><select id="f-series"></select></label>
+        <button type="button" id="f-clear" class="btn btn-quiet filter-clear" hidden>Clear</button>
+      </div>
+    </div>
+    <div id="series-shelves" class="series-shelves" hidden></div>
+    <h3 id="grid-title" class="grid-title" hidden>Everything else</h3>
     <ul id="grid" class="grid" tabindex="-1"></ul>
   </section>
 
@@ -278,6 +290,21 @@
           <span class="field"><input id="edit-name" type="text" maxlength="300" required></span>
           <label class="edit-label" for="edit-author">Author</label>
           <span class="field"><input id="edit-author" type="text" maxlength="300"></span>
+        </div>
+      </div>
+      <div class="edit-more">
+        <div class="edit-series">
+          <label class="edit-label" for="edit-series">Series</label>
+          <span class="field"><input id="edit-series" type="text" maxlength="120" placeholder="None" list="edit-series-list"></span>
+          <datalist id="edit-series-list"></datalist>
+        </div>
+        <div class="edit-number">
+          <label class="edit-label" for="edit-number">Number</label>
+          <span class="field"><input id="edit-number" type="number" min="0" max="9999" step="0.5" inputmode="decimal"></span>
+        </div>
+        <div class="edit-genres">
+          <label class="edit-label" for="edit-genres">Genres, separated by commas</label>
+          <span class="field"><input id="edit-genres" type="text" maxlength="240" placeholder="Fantasy, Adventure"></span>
         </div>
       </div>
       <div class="edit-actions">

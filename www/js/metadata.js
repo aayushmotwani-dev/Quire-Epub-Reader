@@ -4,6 +4,8 @@
 // person presses Search. What is sent: the title and author they typed. What
 // comes back is treated as untrusted text and numbers, never as markup.
 
+import { cleanGenres } from './importer.js'
+
 const SEARCH = 'https://openlibrary.org/search.json'
 const COVERS = 'https://covers.openlibrary.org/b/id/'
 const MAX_COVER_BYTES = 6 * 1024 * 1024
@@ -16,7 +18,7 @@ export const coverUrl = (coverId, size = 'M') =>
 export async function searchBooks({ title = '', author = '' }, { signal } = {}) {
   title = clean(title, 200); author = clean(author, 200)
   if (!title && !author) return []
-  const params = new URLSearchParams({ fields: 'key,title,author_name,first_publish_year,cover_i', limit: '12' })
+  const params = new URLSearchParams({ fields: 'key,title,author_name,first_publish_year,cover_i,subject', limit: '12' })
   if (title) params.set('title', title)
   if (author) params.set('author', author)
   const res = await fetch(`${SEARCH}?${params}`, { signal, credentials: 'omit', referrerPolicy: 'no-referrer' })
@@ -28,6 +30,7 @@ export async function searchBooks({ title = '', author = '' }, { signal } = {}) 
     author: clean(Array.isArray(d?.author_name) ? d.author_name.slice(0, 4).join(', ') : ''),
     year: Number.isInteger(d?.first_publish_year) ? d.first_publish_year : 0,
     coverId: Number.isSafeInteger(d?.cover_i) && d.cover_i > 0 ? d.cover_i : 0,
+    genres: cleanGenres(Array.isArray(d?.subject) ? d.subject.slice(0, 12).filter(x => typeof x === 'string') : []).slice(0, 3),
   })).filter(d => d.title)
 }
 

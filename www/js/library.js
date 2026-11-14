@@ -5,12 +5,16 @@ import { exportHighlights } from './export.js'
 import { editBook } from './edit-book.js'
 import { openDetail } from './book-detail.js'
 import { openStats } from './stats-ui.js'
+import { readExtraMeta, META_VERSION } from './importer.js'
 
 const coverURLs = new Map() // book id -> object URL, revoked when the book leaves
 
 let books = []
 let query = ''
 let sort = getFlag('sort', 'recent')
+const STATUSES = { all: 'All', reading: 'Reading', unread: 'Unread', finished: 'Finished' }
+const filter = { status: 'all', author: '', genre: '', series: '' }
+const filtering = () => filter.status !== 'all' || !!filter.author || !!filter.genre || !!filter.series
 let handlers = { open: () => {}, add: () => {}, jump: () => {} }
 
 export function initLibrary({ onOpen, onAdd, onJump }) {
@@ -21,7 +25,7 @@ export function initLibrary({ onOpen, onAdd, onJump }) {
     openStats({ finishedTotal: done.length, finishedThisYear: done.filter(b => new Date(finishedTime(b)).getFullYear() === year).length })
   })
   // Hold a cover (or right-click it) for the book's own page.
-  const grid = $('#grid')
+  const grid = $('#shelf')
   let hold = 0, held = false
   const bookOf = target => { const li = target.closest?.('.book'); return li ? books.find(b => b.id === li.dataset.id) : null }
   grid.addEventListener('contextmenu', e => { const b = bookOf(e.target); if (b && e.target.closest('.book-open')) { e.preventDefault(); clearTimeout(hold); held = true; showDetail(b) } })
@@ -35,7 +39,21 @@ export function initLibrary({ onOpen, onAdd, onJump }) {
   for (const type of ['pointerup', 'pointercancel', 'pointerleave', 'pointermove'])
     grid.addEventListener(type, e => { if (type !== 'pointermove' || Math.abs(e.movementX) + Math.abs(e.movementY) > 6) clearTimeout(hold) })
   grid.addEventListener('click', e => { if (held) { held = false; e.preventDefault(); e.stopPropagation() } }, true)
-  $('#lib-search').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); renderShelf() })
+  let searchTimer = 0
+  $('#lib-search').addEventListener('input', e => {
+    query = e.target.value.trim().toLowerCase()
+    clearTimeout(searchTimer)
+    // A large library waits a moment for the typing to pause.
+    if (books.length > 150) searchTimer = setTimeout(renderShelf, 110)
+    else renderShelf()
+  })
+  $('#f-status').replaceChildren(...Object.entries(STATUSES).map(([key, label]) => el('button', {
+    type: 'button', class: 'chip', 'data-status': key, 'aria-pressed': String(key === filter.status), text: label,
+    onclick: () => { filter.status = key; renderShelf() },
+  })))
+  for (const key of ['author', 'genre', 'series'])
+    $(`#f-${key}`).addEventListener('change', e => { filter[key] = e.target.value; renderShelf() })
+  $('#f-clear').addEventListener('click', () => { Object.assign(filter, { status: 'all', author: '', genre: '', series: '' }); renderShelf() })
   const sortSel = $('#lib-sort')
   sortSel.value = sort
   sortSel.addEventListener('change', e => { sort = e.target.value; setFlag('sort', sort); renderShelf() })
@@ -51,7 +69,9 @@ export async function refreshLibrary() {
   books = await db.getAll('books')
   const ids = new Set(books.map(b => b.id))
   for (const [id, url] of coverURLs) if (!ids.has(id)) { URL.revokeObjectURL(url); coverURLs.delete(id) }
+  for (const id of tiles.keys()) if (!ids.has(id)) tiles.delete(id)
   render()
+  backfillMeta()
 }
 
 export const libraryCount = () => books.length
@@ -221,6 +241,12 @@ function renderHero() {
   host.hidden = !current
   if (!current) { setAmbient(null); return host.replaceChildren() }
   const pct = Math.floor(current.progress * 100)
+  const m = current.minsLeft
+  const left = Number.isFinite(m) && m > 0 ? (m < 60 ? `${m} min left` : `${Math.floor(m / 60)} h ${m % 60 ? `${m % 60} min ` : ''}left`) : ''
+  // The next unfinished book of the same series, if this one belongs to a series.
+  const next = current.series && current.seriesIndex != null
+    ? books.filter(b => b.series === current.series && b.id !== current.id && !isFinished(b) && (b.seriesIndex ?? -1) > current.seriesIndex).sort(bySeries)[0]
+    : null
   host.replaceChildren(
     el('button', { type: 'button', class: 'now-cover', 'data-cover-of': current.id, 'aria-label': `Continue reading ${current.title}`, onclick: e => handlers.open(current.id, e.currentTarget.firstElementChild) }, cover(current, 'hero')),
     el('div', { class: 'now-body' },
@@ -231,8 +257,11 @@ function renderHero() {
         el('p', { class: 'dot-number', 'aria-label': `${pct} percent read` },
           el('span', { text: String(pct) }), el('span', { class: 'dot-unit', text: '%' })),
         segBar(current.marks, current.progress)),
-      current.chapter ? el('p', { class: 'now-chapter', text: current.chapter }) : null,
-      el('button', { type: 'button', class: 'btn btn-solid', text: 'Continue', onclick: () => handlers.open(current.id, host.querySelector('.cover')) })))
+      (current.chapter || left) ? el('p', { class: 'now-chapter', text: [current.chapter, left].filter(Boolean).join(', ') }) : null,
+      el('div', { class: 'now-actions' },
+        el('button', { type: 'button', class: 'btn btn-solid', text: 'Continue', onclick: () => handlers.open(current.id, host.querySelector('.cover')) }),
+        el('button', { type: 'button', class: 'btn btn-quiet', text: 'Book page', onclick: () => showDetail(current) })),
+      next ? el('p', { class: 'now-next' }, el('span', { text: `Next in ${current.series}: ` }), el('button', { type: 'button', class: 'link', text: next.title, onclick: () => showDetail(next) })) : null))
   setAmbient(current)
 }
 
@@ -280,33 +309,101 @@ function normalizeMarks(marks, keep = []) {
   return out
 }
 
+const byTitle = (a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true })
+const bySeries = (a, b) => (a.seriesIndex ?? 1e9) - (b.seriesIndex ?? 1e9) || byTitle(a, b)
+const SORTERS = {
+  recent: (a, b) => (b.openedAt || b.addedAt) - (a.openedAt || a.addedAt),
+  title: byTitle,
+  author: (a, b) => (a.author || '￿').localeCompare(b.author || '￿', undefined, { sensitivity: 'base' }) || byTitle(a, b),
+  added: (a, b) => (b.addedAt || 0) - (a.addedAt || 0),
+}
+const statusOf = b => isFinished(b) ? 'finished' : b.openedAt ? 'reading' : 'unread'
+
 function sorted() {
-  const list = books.filter(b => !query || b.title.toLowerCase().includes(query) || b.author.toLowerCase().includes(query))
-  const by = {
-    recent: (a, b) => (b.openedAt || b.addedAt) - (a.openedAt || a.addedAt),
-    title: (a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }),
-    author: (a, b) => (a.author || '￿').localeCompare(b.author || '￿', undefined, { sensitivity: 'base' }) || a.title.localeCompare(b.title),
-  }
-  return list.sort(by[sort] ?? by.recent)
+  const list = books.filter(b => {
+    if (query && !(b.title.toLowerCase().includes(query) || b.author.toLowerCase().includes(query) || (b.series || '').toLowerCase().includes(query))) return false
+    if (filter.status !== 'all' && statusOf(b) !== filter.status) return false
+    if (filter.author && b.author !== filter.author) return false
+    if (filter.genre && !(b.genres || []).includes(filter.genre)) return false
+    if (filter.series && b.series !== filter.series) return false
+    return true
+  })
+  return list.sort(filter.series ? bySeries : SORTERS[sort] ?? SORTERS.recent)
 }
 
-function renderShelf() {
-  $('#lib-count').textContent = books.length === 1 ? '1 book' : `${books.length} books`
-  const grid = $('#grid')
-  const list = sorted()
-  if (!list.length && books.length) {
-    grid.replaceChildren(el('li', { class: 'no-match', text: `Nothing matches “${query}”.` }))
-    return
-  }
-  grid.replaceChildren(...list.map(book => el('li', { class: 'book' + (isFinished(book) ? ' is-done' : ''), 'data-id': book.id, style: `--p:${Math.max(0, Math.min(1, book.progress || 0))}` },
+// One book on a shelf. `inSeries` shows its number in place of the author.
+// Tiles are kept and reused while the book's record is the same object, so
+// searching, sorting and filtering a large library only moves existing tiles.
+const tiles = new Map()
+function tile(book, { inSeries = false } = {}) {
+  const kept = tiles.get(book.id)
+  if (kept && kept.book === book && kept.inSeries === inSeries) return kept.node
+  const node = buildTile(book, inSeries)
+  tiles.set(book.id, { book, inSeries, node })
+  return node
+}
+
+function buildTile(book, inSeries) {
+  const num = inSeries && book.seriesIndex != null ? `Book ${book.seriesIndex}` : ''
+  return el('li', { class: 'book' + (isFinished(book) ? ' is-done' : ''), 'data-id': book.id, style: `--p:${Math.max(0, Math.min(1, book.progress || 0))}` },
     el('button', { type: 'button', class: 'book-open', 'aria-label': `Open ${book.title}`, onclick: e => handlers.open(book.id, e.currentTarget.firstElementChild) }, cover(book)),
     el('div', { class: 'book-meta' },
       el('p', { class: 'book-title', text: book.title, title: book.title }),
       iconButton('more', `More for ${book.title}`, e => openMenu(e.currentTarget, book), { class: 'book-more' })),
     el('p', { class: 'book-sub' },
-      el('span', { class: 'book-author', text: book.author || 'Unknown author' }),
+      el('span', { class: 'book-author', text: num || book.author || 'Unknown author' }),
       el('span', { class: 'book-status' + (!book.openedAt ? ' is-new' : ''), text: statusText(book) })),
-    (book.openedAt && !isFinished(book) && book.progress > 0.005) ? el('span', { class: 'book-bar', 'aria-hidden': 'true' }, el('i')) : null)))
+    (book.openedAt && !isFinished(book) && book.progress > 0.005) ? el('span', { class: 'book-bar', 'aria-hidden': 'true' }, el('i')) : null)
+}
+
+// The filter menus list what is actually in the library, with counts.
+function fillSelect(id, label, values, current) {
+  const sel = $(id)
+  const counts = new Map()
+  for (const v of values) if (v) counts.set(v, (counts.get(v) || 0) + 1)
+  const names = [...counts.keys()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+  sel.replaceChildren(el('option', { value: '', text: label }), ...names.map(n => el('option', { value: n, text: `${n} (${counts.get(n)})` })))
+  sel.value = counts.has(current) ? current : ''
+  sel.closest('.filter-select').hidden = names.length < (id === '#f-author' ? 2 : 1)
+  sel.closest('.filter-select').classList.toggle('is-on', !!sel.value)
+  return sel.value
+}
+
+function renderShelf() {
+  $('#lib-count').textContent = books.length === 1 ? '1 book' : `${books.length} books`
+  filter.author = fillSelect('#f-author', 'Author', books.map(b => b.author), filter.author)
+  filter.genre = fillSelect('#f-genre', 'Genre', books.flatMap(b => b.genres || []), filter.genre)
+  filter.series = fillSelect('#f-series', 'Series', books.map(b => b.series), filter.series)
+  for (const chip of $('#f-status').children) chip.setAttribute('aria-pressed', String(chip.dataset.status === filter.status))
+  $('#f-clear').hidden = !filtering()
+  $('.filters').hidden = books.length < 2
+
+  const grid = $('#grid'), shelves = $('#series-shelves'), gridTitle = $('#grid-title')
+  const list = sorted()
+  if (!list.length && books.length) {
+    shelves.hidden = gridTitle.hidden = true
+    shelves.replaceChildren()
+    grid.replaceChildren(el('li', { class: 'no-match', text: query ? `Nothing matches “${query}”.` : 'No books match these filters.' }))
+    return
+  }
+
+  // With nothing filtered, books of one series stand together on their own shelf.
+  const groups = new Map()
+  if (!filtering() && !query) for (const b of list) if (b.series) groups.set(b.series, [...(groups.get(b.series) || []), b])
+  const series = [...groups.entries()].filter(([, items]) => items.length >= 2)
+  const shelved = new Set(series.flatMap(([, items]) => items.map(b => b.id)))
+  shelves.hidden = !series.length
+  shelves.replaceChildren(...series.map(([name, items]) => {
+    const done = items.filter(isFinished).length
+    return el('section', { class: 'series-shelf', 'aria-label': `${name}, a series` },
+      el('header', { class: 'series-head' },
+        el('h3', { text: name }),
+        el('span', { class: 'count', text: `${items.length} books${done ? `, ${done} finished` : ''}` })),
+      el('ul', { class: 'shelf-row' }, ...items.sort(bySeries).map(b => tile(b, { inSeries: true }))))
+  }))
+  const rest = list.filter(b => !shelved.has(b.id))
+  gridTitle.hidden = !series.length || !rest.length
+  grid.replaceChildren(...rest.map(b => tile(b, { inSeries: !!filter.series })))
 }
 
 function openMenu(anchor, book) {
@@ -359,7 +456,7 @@ async function removeBook(book) {
 }
 
 function edit(book) {
-  editBook(book, { saved: async id => {
+  editBook(book, { knownSeries: [...new Set(books.map(b => b.series).filter(Boolean))].sort(), saved: async id => {
     // The cover may have changed: drop the cached picture so the shelf redraws it.
     const old = coverURLs.get(id)
     if (old) { URL.revokeObjectURL(old); coverURLs.delete(id) }
@@ -382,7 +479,7 @@ function showDetail(book) {
 export function coverElementFor(id) {
   const hero = document.querySelector('.now-cover')
   if (hero?.dataset.coverOf === id) return hero.firstElementChild
-  for (const li of document.querySelectorAll('#grid .book')) if (li.dataset.id === id) return li.querySelector('.cover')
+  for (const li of document.querySelectorAll('#shelf .book')) if (li.dataset.id === id) return li.querySelector('.cover')
   return null
 }
 
@@ -413,4 +510,29 @@ async function setAmbient(book) {
     if (ambientFor !== key || !n) return
     root.style.setProperty('--ambient', `rgb(${Math.round(r / n)} ${Math.round(g / n)} ${Math.round(b / n)})`)
   } catch { root.style.removeProperty('--ambient') }
+}
+
+// ---------------------------------------------------------------- series and genres for older books
+// Books added before Quire read series and genres get them from their own
+// file, one at a time, in the background. Each book is only ever read once.
+let backfilling = false
+async function backfillMeta() {
+  if (backfilling) return
+  const todo = books.filter(b => b.metaV !== META_VERSION)
+  if (!todo.length) return
+  backfilling = true
+  let changed = false
+  try {
+    for (const b of todo) {
+      await new Promise(r => setTimeout(r, 60))
+      let extra = { series: '', seriesIndex: null, genres: [], metaV: META_VERSION }
+      try { extra = await readExtraMeta(b.id) } catch { /* unreadable: mark it done, with nothing */ }
+      // Never overwrite what the person typed in Edit details.
+      const patch = { metaV: META_VERSION }
+      if (!b.series && extra.series) { patch.series = extra.series; patch.seriesIndex = extra.seriesIndex }
+      if (!(b.genres || []).length && extra.genres.length) patch.genres = extra.genres
+      try { await db.updateBook(b.id, patch); changed ||= Object.keys(patch).length > 1 } catch { /* try again next time */ }
+    }
+  } finally { backfilling = false }
+  if (changed && !document.body.classList.contains('reading')) await refreshLibrary()
 }

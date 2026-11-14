@@ -30,7 +30,9 @@ Your books stay on your device. No account, no server, no tracking.
 
 **Backup and restore.** Settings has a Backup block: one file with your books, your place in each, highlights, notes, goals, stats and settings. Restore it on the same device or another one. Restoring adds what is missing and never deletes.
 
-**PDF to EPUB.** Add a PDF like any other book and Quire rebuilds it as a reflowable EPUB on your device: paragraphs rejoined, running headers and page numbers removed, chapters from the PDF's outline or its headings, the first page as the cover. It works on PDFs that contain real text. Scanned PDFs (pictures of pages) are refused with an explanation, and pictures, tables and complex layouts inside a PDF are not carried over.
+**Series shelves and filters.** Quire reads each book's series and genres from the file. Books of one series stand together on their own shelf, in order, and the home screen says which book comes next. Filter the library by reading status, author, genre or series, and search by title, author or series. Series, number and genres can be changed in Edit details.
+
+**PDF to EPUB.** Add a PDF like any other book and Quire rebuilds it as a reflowable EPUB on your device: paragraphs rejoined, running headers and page numbers removed, chapters from the PDF's outline or its headings, pictures kept in place between the paragraphs, the first page as the cover. A scanned PDF (pictures of pages) is added as a book of page pictures, so it can be read, but its text cannot be resized, searched or highlighted. Tables and complex layouts are not rebuilt.
 
 **Twelve reading typefaces.** Literata, Source Serif, EB Garamond, Lora, Crimson Pro, Bitter, Geist, Inter, Atkinson Hyperlegible, OpenDyslexic, Courier Prime, or the book's own.
 

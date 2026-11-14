@@ -1277,3 +1277,83 @@ body:not(.reading) { background-image: radial-gradient(90% 560px at 22% 0, color
 .font-opt[data-font="dyslexic"] .font-name { font-family: 'Quire Dyslexic', sans-serif; }
 
 @media (min-width: 420px) { .font-list { grid-template-columns: 1fr 1fr; column-gap: 6px; } }
+
+/* ---------------------------------------------------------------- filters */
+.shelf-head { margin-bottom: 16px; }
+.filters { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; margin-bottom: 30px; }
+.filters[hidden] { display: none; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.filters .chip { min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--hair); background: transparent; color: var(--ink-2); font: inherit; font-size: var(--t-s); cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.filters .chip:hover { color: var(--ink); border-color: color-mix(in srgb, var(--ink) 35%, transparent); }
+.filters .chip[aria-pressed="true"] { background: var(--ink); color: var(--canvas); border-color: var(--ink); font-weight: 560; }
+.filter-selects { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.filter-select[hidden] { display: none; }
+.filter-select select { height: 36px; min-width: 0; max-width: 190px; padding-top: 0; padding-bottom: 0; border-radius: 999px; font-size: var(--t-s); color: var(--ink-2); }
+.filter-select.is-on select { color: var(--signal-ink); border-color: color-mix(in srgb, var(--signal) 55%, transparent); background-color: color-mix(in srgb, var(--signal) 10%, transparent); font-weight: 560; }
+.filter-clear { min-height: 36px; padding: 0 12px; font-size: var(--t-s); }
+@media (max-width: 640px) {
+  .filters { margin-bottom: 24px; }
+  .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -20px; padding: 0 20px; max-width: 100vw; }
+  .chips::-webkit-scrollbar { display: none; }
+  .filters .chip { flex: none; }
+  .filter-select select { max-width: 150px; }
+}
+
+/* ---------------------------------------------------------------- series shelves */
+.series-shelves { display: grid; gap: 34px; margin-bottom: 44px; }
+.series-shelves[hidden] { display: none; }
+.series-head { display: flex; align-items: baseline; gap: 4px; margin-bottom: 16px; }
+.series-head h3 { margin: 0; font-size: var(--t-m); font-weight: 620; letter-spacing: -.005em; }
+.series-shelf { position: relative; padding: 20px 22px 6px; border-radius: 18px; background: color-mix(in srgb, var(--ink) 3.5%, transparent); box-shadow: inset 0 0 0 1px var(--hair); }
+.shelf-row { list-style: none; margin: 0; padding: 4px 2px 18px; display: grid; grid-auto-flow: column; grid-auto-columns: 148px; gap: 26px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: thin; }
+.shelf-row .book { scroll-snap-align: start; min-width: 0; }
+.grid-title { margin: 0 0 22px; font-size: var(--t-m); font-weight: 620; }
+.grid-title[hidden] { display: none; }
+@media (max-width: 640px) {
+  .series-shelf { margin: 0 -8px; padding: 16px 14px 2px; border-radius: 14px; }
+  .shelf-row { grid-auto-columns: 112px; gap: 16px; }
+  .shelf-row .book-title { font-size: var(--t-s); }
+}
+:root[data-corners="square"] .series-shelf, :root[data-corners="square"] .filters .chip, :root[data-corners="square"] .filter-select select { border-radius: 2px; }
+
+/* ---------------------------------------------------------------- book details: series and genres */
+.edit-more { display: grid; grid-template-columns: 1fr 96px; gap: 6px 12px; margin-top: 14px; }
+.edit-more .field input { width: 100%; }
+.edit-genres { grid-column: 1 / -1; }
+.edit-more .edit-label { display: block; margin: 6px 0; }
+.detail-tags { margin-top: 8px; }
+.detail-facts.detail-tags li:first-child { background: var(--wash); color: inherit; font-weight: inherit; }
+
+/* series shelves: compact, two side by side where there is room */
+.series-shelves { grid-template-columns: repeat(auto-fit, minmax(min(100%, 470px), 1fr)); gap: 22px; align-items: start; }
+.series-shelf { min-width: 0; padding: 18px 20px 4px; }
+.shelf-row { grid-auto-columns: 124px; gap: 20px; padding-bottom: 14px; }
+.shelf-row .book-title { font-size: var(--t-s); }
+.shelf-row .book-meta { margin-top: 12px; }
+@media (max-width: 640px) {
+  .series-shelf { margin: 0; padding: 16px 14px 2px; }
+  .shelf-row { grid-auto-columns: 104px; gap: 14px; }
+  .filter-selects { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  .filter-selects:has(.filter-clear:not([hidden])) { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; }
+  .filter-select select { max-width: none; width: 100%; padding-left: 12px; padding-right: 26px; }
+}
+
+/* hero: actions and the next book of a series */
+.now-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.now-next { margin-top: 16px; font-size: var(--t-s); color: var(--ink-2); max-width: 100%; }
+.link { padding: 0; border: 0; background: none; font: inherit; color: var(--ink); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--ink) 30%, transparent); text-underline-offset: 3px; cursor: pointer; }
+.link:hover { text-decoration-color: var(--signal); }
+
+/* small phones: nothing may be wider than the screen */
+.now-chapter { max-width: min(46ch, 100%); }
+.now-title, .now-author { max-width: 100%; overflow-wrap: anywhere; }
+.lib-head { min-width: 0; }
+.lib-actions { min-width: 0; flex: none; }
+@media (max-width: 400px) {
+  .wm-dots { height: 36px; }
+  .lib-head { gap: 8px; }
+  .lib-actions { gap: 0; }
+  .lib-actions .icon-btn { width: 40px; height: 40px; }
+  .add-btn { margin-left: 6px; }
+}
+@media (max-width: 340px) { .wm-dots { height: 30px; } .lib-actions .icon-btn { width: 36px; } }

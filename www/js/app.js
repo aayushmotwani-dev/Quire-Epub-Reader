@@ -80,7 +80,7 @@ function goLibrary() {
 async function importFiles(files) {
   const list = Array.from(files).filter(f => f && f.size !== undefined)
   if (!list.length) return []
-  const added = [], existing = [], failed = []
+  const added = [], existing = [], failed = [], notes = []
   for (const [i, file] of list.entries()) {
     if (list.length > 1) toast(`Adding ${i + 1} of ${list.length}…`, { duration: 0 })
     else toast(`Adding ${file.name || 'book'}…`, { duration: 0 })
@@ -90,12 +90,14 @@ async function importFiles(files) {
       if (/\.pdf$/i.test(file.name || '') || file.type === 'application/pdf' || await isPdf(file)) {
         const short = (file.name || 'PDF').replace(/\.pdf$/i, '').slice(0, 40)
         let shown = 0
-        epub = await pdfToEpub(file, { onProgress: (n, total) => {
+        const made = await pdfToEpub(file, { onProgress: (n, total, what = 'Converting') => {
           const now = performance.now()
           if (now - shown < 250 && n !== total) return
           shown = now
-          toast(`Converting “${short}”: page ${n} of ${total}…`, { duration: 0 })
+          toast(`${what} “${short}”: page ${n} of ${total}…`, { duration: 0 })
         } })
+        epub = made.file
+        if (made.scanned) notes.push(`“${short}” is a scan, so it was added as page pictures. Its text cannot be resized or searched.`)
       }
       const { book, status } = await importFile(epub)
       ;(status === 'added' ? added : existing).push(book)
@@ -113,7 +115,8 @@ async function importFiles(files) {
   else if (added.length) parts.push(`Added ${added.length} books`)
   if (existing.length) parts.push(existing.length === 1 ? `“${existing[0].title}” is already in your library` : `${existing.length} were already in your library`)
   if (failed.length) parts.push(failed.length === 1 ? failed[0] : `${failed.length} files could not be added`)
-  toast(parts.map(s => s.replace(/\.$/, '')).join('. ') + '.', { duration: failed.length ? 7000 : 3600 })
+  parts.push(...notes)
+  toast(parts.map(s => s.replace(/\.$/, '')).join('. ') + '.', { duration: failed.length || notes.length ? 8000 : 3600 })
   return [...added, ...existing]
 }
 

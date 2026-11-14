@@ -46,6 +46,51 @@ function cleanText(s, max = 300) {
   return String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, max)
 }
 
+// ---------------------------------------------------------------- series and genres
+// Subjects in the wild are messy: "Fiction / Fantasy / Epic", "FIC009020",
+// "fantasy; adventure". Keep a few short, readable genres.
+export function cleanGenres(input) {
+  const raw = (Array.isArray(input) ? input : [input]).map(x => typeof x === 'string' ? x : langMap(x?.name ?? x)).filter(Boolean)
+  const out = []
+  const seen = new Set()
+  for (const piece of raw.flatMap(s => String(s).split(/\s*(?:\/|;|,|\||--|—|>)\s*/))) {
+    const g = cleanText(piece, 60).replace(/^[\s.:-]+|[\s.:-]+$/g, '')
+    if (g.length < 3 || g.length > 32) continue
+    if (/^[A-Z]{3}\d{6}$/.test(g) || /^\d+$/.test(g) || /^(general|unknown|ebook|ebooks|book|books)$/i.test(g)) continue
+    const nice = g === g.toLowerCase() || g === g.toUpperCase() ? g.toLowerCase().replace(/(^|[\s-])\p{L}/gu, c => c.toUpperCase()) : g
+    const key = nice.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key); out.push(nice)
+    if (out.length === 6) break
+  }
+  // "Fiction" on its own says little once a real genre is there.
+  const broad = /^(fiction|non-?fiction)$/i
+  return out.some(g => !broad.test(g)) ? out.filter(g => !broad.test(g)) : out
+}
+
+export function cleanSeriesIndex(v) {
+  const n = typeof v === 'string' ? parseFloat(v) : v
+  return Number.isFinite(n) && n >= 0 && n < 10_000 ? Math.round(n * 100) / 100 : null
+}
+
+function seriesOf(meta) {
+  const b = meta.belongsTo ?? {}
+  const first = x => (Array.isArray(x) ? x : x ? [x] : []).find(c => langMap(c?.name ?? ''))
+  const hit = first(b.series) ?? first(b.collection)
+  if (!hit) return { series: '', seriesIndex: null }
+  return { series: cleanText(langMap(hit.name), 120), seriesIndex: cleanSeriesIndex(hit.position) }
+}
+
+export const META_VERSION = 1
+const extraMeta = meta => ({ ...seriesOf(meta), genres: cleanGenres(meta.subject ?? []), metaV: META_VERSION })
+
+// Books added before Quire read series and genres get them from their file, once.
+export async function readExtraMeta(id) {
+  const file = await loadBookFile(id)
+  const parsed = await makeBook(file)
+  return extraMeta(parsed.metadata ?? {})
+}
+
 // Imports one file. Resolves to { book, status: 'added' | 'exists' }.
 export async function importFile(file) {
   const label = file.name || 'This file'
@@ -83,6 +128,7 @@ export async function importFile(file) {
     size: file.size,
     fileName: cleanText(file.name, 200),
     cover: thumb,
+    ...extraMeta(meta),
     addedAt: Date.now(),
     openedAt: 0,
     progress: 0,
@@ -119,5 +165,6 @@ export async function readOriginal(id) {
     title: cleanText(langMap(meta.title)) || cleanText((file.name || 'Untitled').replace(/\.epub$/i, '')),
     author: cleanText(formatAuthors(meta.author)),
     cover: await makeThumb(coverBlob),
+    ...extraMeta(meta),
   }
 }
