@@ -5,7 +5,7 @@
 **A quiet EPUB reader for Windows, Mac, iPhone and Android.**
 Your books stay on your device. No account, no server, no tracking.
 
-<img src="docs/screenshots/library.png" alt="Quire library on the desktop, with reading goals and the book you are reading" width="900">
+<img src="docs/screenshots/library.png" alt="Quire library on the desktop, with reading goals, the book you are reading and what comes next in its series" width="900">
 
 </div>
 
@@ -30,9 +30,11 @@ Your books stay on your device. No account, no server, no tracking.
 
 **Backup and restore.** Settings has a Backup block: one file with your books, your place in each, highlights, notes, goals, stats and settings. Restore it on the same device or another one. Restoring adds what is missing and never deletes.
 
-**Series shelves and filters.** Quire reads each book's series and genres from the file. Books of one series stand together on their own shelf, in order, and the home screen says which book comes next. Filter the library by reading status, author, genre or series, and search by title, author or series. Series, number and genres can be changed in Edit details.
+**Shelves and filters.** Quire reads each book's series and genres from the file. Books of one series stand together on their own shelf, in order, and the home screen says which book comes next. Make your own shelves too ("To read", "Favourites"); a book can stand on several. Filter by reading status, author, genre, series or shelf, and search by title, author or series. A button in Settings finds covers for every book that has none.
 
-**PDF to EPUB.** Add a PDF like any other book and Quire rebuilds it as a reflowable EPUB on your device: paragraphs rejoined, running headers and page numbers removed, chapters from the PDF's outline or its headings, pictures kept in place between the paragraphs, the first page as the cover. A scanned PDF (pictures of pages) is added as a book of page pictures, so it can be read, but its text cannot be resized, searched or highlighted. Tables and complex layouts are not rebuilt.
+<img src="docs/screenshots/shelves.png" alt="Your own shelf and a series shelf, with status chips and filters" width="900">
+
+**More than EPUB.** Quire opens EPUB, Kindle (MOBI and AZW3 without copy protection), FictionBook (FB2, FBZ) and comics (CBZ). A PDF is rebuilt as a reflowable EPUB on your device: paragraphs rejoined, running headers and page numbers removed, chapters from the PDF's outline or its headings, pictures kept in place, the first page as the cover. A scanned PDF becomes a book of page pictures, readable but not resizable or searchable. Tables and complex layouts are not rebuilt. A long conversion can be cancelled.
 
 **Twelve reading typefaces.** Literata, Source Serif, EB Garamond, Lora, Crimson Pro, Bitter, Geist, Inter, Atkinson Hyperlegible, OpenDyslexic, Courier Prime, or the book's own.
 
@@ -44,7 +46,14 @@ Your books stay on your device. No account, no server, no tracking.
 
 **Reading stats.** Your streak, minutes read today, and the last four weeks as columns of dots. Counted on your device while a book is open.
 
-**Small touches.** Drop caps at chapter starts, a light haptic tick on page turns (phones), and an Evening appearance that is light by day and dark from 7 pm to 7 am.
+<p>
+<img src="docs/screenshots/book-page.png" alt="The book page: progress, time left, series, genres and highlights" width="440">
+<img src="docs/screenshots/stats.png" alt="Reading stats: streak, today, books finished, and four weeks of dots" width="440">
+</p>
+
+**Notes and words.** Tap a footnote number and the note opens in a small card; you stay on your page. Every word you look up inside a book is kept, with the sentence you met it in, under Your words in the dictionary, with a simple flashcard review.
+
+**Small touches.** Drop caps at chapter starts, a light haptic tick on page turns (phones), an Evening appearance that is light by day and dark from 7 pm to 7 am, and three short tips the first time you open the app. Every screen is checked against the WCAG 2.1 AA accessibility rules.
 
 **Book details you can fix.** The menu on any book opens its details: change the title, the author or the cover, with your own image or with a match from [Open Library](https://openlibrary.org). This is the one place Quire uses the internet, and only when you press Search; it sends the title and author you typed, nothing else. The EPUB file is never changed, so you can always reset to the original.
 
@@ -56,9 +65,11 @@ Your books stay on your device. No account, no server, no tracking.
 
 **Reading goals.** Set how many books you want to finish each month and each year. The library shows how far you are, and how many books you are reading now.
 
-**Make it yours.** Settings, Advanced, has three styles: the clean Quire look, Typewriter (the app and your books set in Courier Prime, as if typed) and Dot matrix (titles and the logo in dots). You can also change the app typeface, the accent colour (orange, red, blue, green or graphite), the pattern behind the home screen (dots, grid, lines or diagonal), interface text size, square or round corners, what the bottom of the page shows, which way the left edge turns, and how fast pages turn. Reset puts it all back.
+**Make it yours.** Settings, Advanced, has six app styles: Quire (clean, with dot-matrix numbers), Paperback (cream paper, serif titles, small caps), Studio (warm grey and graphite, squared controls), Blueprint (drafting paper, slab titles, typed labels), Typewriter (the app and your books in Courier Prime) and Dot matrix. Each comes with its own accent, pattern and corners, and you can change any of them. There are also five accent colours, four background patterns, three interface sizes, and your own page theme from two colours you pick.
 
-<img src="docs/screenshots/typewriter.png" alt="Typewriter style: the app set in Courier Prime, with the Advanced settings open" width="900">
+<img src="docs/screenshots/style-paperback.png" alt="Paperback style: cream paper and serif titles" width="290">
+<img src="docs/screenshots/style-studio.png" alt="Studio style: warm grey, graphite and an orange mark" width="290">
+<img src="docs/screenshots/style-blueprint.png" alt="Blueprint style at night: navy drafting paper with a fine grid" width="290">
 
 **Room to read.** Focus mode leaves only the text: no running heads, no page info, no pointer. On a computer, full window hides the title bar too; press Esc, or move to the top edge and click the X, to come back.
 
@@ -66,6 +77,7 @@ Your books stay on your device. No account, no server, no tracking.
 
 <p>
 <img src="docs/screenshots/phone-library-dark.png" alt="Library on a phone in dark mode" width="200">
+<img src="docs/screenshots/phone-shelves.png" alt="Shelves and filters on a phone" width="200">
 <img src="docs/screenshots/phone-reader.png" alt="Reading on a phone" width="200">
 <img src="docs/screenshots/phone-curl.png" alt="A page curling on a phone" width="200">
 <img src="docs/screenshots/phone-ember.png" alt="The Ember theme on a phone" width="200">

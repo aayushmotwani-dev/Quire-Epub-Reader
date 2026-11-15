@@ -18,7 +18,7 @@ protocol.registerSchemesAsPrivileged([
 let win = null
 const pendingFiles = []
 
-const isEpub = p => typeof p === 'string' && p.toLowerCase().endsWith('.epub')
+const isEpub = p => typeof p === 'string' && /\.(epub|pdf|mobi|azw3?|prc|fb2|fbz|cbz)$/i.test(p)
 
 function epubsFromArgv(argv) {
   // Packaged Windows: [exe, file]; dev: [electron, appPath, file]

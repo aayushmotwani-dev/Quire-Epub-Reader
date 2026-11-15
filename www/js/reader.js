@@ -5,7 +5,7 @@ import * as db from './db.js'
 import { loadBookFile } from './importer.js'
 import { guardBook } from './sanitize.js'
 import { readingCSS, themeVars } from './reading-style.js'
-import { getSettings, setSettings, effectiveTurn, systemWantsStill, onSettings, resolveThemeKey, onSystemThemeChange, applyAppMode, THEMES, FONTS, MARGINS, LIMITS, TURNS, PAGES, SPEED_FACTOR } from './settings.js'
+import { getSettings, setSettings, setCustomTheme, contrast, effectiveTurn, systemWantsStill, onSettings, resolveThemeKey, onSystemThemeChange, applyAppMode, THEMES, FONTS, MARGINS, LIMITS, TURNS, PAGES, SPEED_FACTOR } from './settings.js'
 import { lookup, lookupable, speak, canSpeak } from './dictionary.js'
 import { el, $, $$, ICONS, iconButton, toast, showSheet, closeSheet, isSheetOpen, openSheetId, noteDialog, langMap, formatMinutes, isTouch, isCompact } from './ui.js'
 import { fillSegBar } from './library.js'
@@ -13,6 +13,8 @@ import { exportHighlights } from './export.js'
 import { canFlip, flipPage, isFlipping, warmUpCurl } from './pageflip.js'
 import { tick } from './haptics.js'
 import { openQuoteCard } from './quote.js'
+import { isNoteLink, noteText } from './footnote.js'
+import { rememberWord, sentenceAround } from './vocab.js'
 import * as stats from './stats.js'
 
 export const HIGHLIGHT_COLORS = {
@@ -204,13 +206,29 @@ function wireView(view) {
     const href = e.detail.a.getAttribute('href') || ''
     if (/^(https?:|mailto:)/i.test(href)) window.open(href, '_blank', 'noopener,noreferrer')
   })
-  view.addEventListener('link', e => {
+  const noteJump = href => {
     let index
-    try { index = view.resolveNavigation(e.detail.href)?.index } catch { index = undefined }
+    try { index = view.resolveNavigation(href)?.index } catch { index = undefined }
     if (!Number.isInteger(index)) return
     R.jumpTurns = 0
     R.jumpIndex = index
     R.pendingJump = true
+  }
+  view.addEventListener('link', e => {
+    const { a, href } = e.detail
+    if (isNoteLink(a)) {
+      // A footnote: show it here instead of leaving the page.
+      e.preventDefault()
+      const book = R
+      noteText(view, R.docs, href).then(text => {
+        if (R !== book) return
+        if (text) return showNote(text, href, (a.textContent || '').trim())
+        noteJump(href)
+        view.goTo(href).catch(() => {})
+      })
+      return
+    }
+    noteJump(href)
   })
 }
 
@@ -934,6 +952,7 @@ async function showSelectionPop({ range, index, existing = null }) {
   const showDefine = async () => {
     if (!entry && word) entry = await lookup(word).catch(() => null)
     if (!R || R.selection?.key !== key) return
+    rememberWord(entry, { sentence: sentenceAround(range), book: R.record.title })
     const card = dictCard(entry ?? { word, found: false }, place)
     const bar = el('div', { class: 'pop-bar' },
       iconButton('back', 'Back', () => showMenu()),
@@ -1240,7 +1259,7 @@ async function runSearch(query) {
   const host = $('#search-results')
   const status = el('p', { class: 'search-status', role: 'status', text: 'Searching…' })
   host.replaceChildren(status)
-  let count = 0
+  let count = 0, chapters = 0
   const t = THEMES[resolveThemeKey()]
   try {
     for await (const result of R.view.search({ query, drawOptions: { color: t.muted } })) {
@@ -1248,8 +1267,9 @@ async function runSearch(query) {
       if (result === 'done') break
       if (result.progress != null) { status.textContent = `Searching… ${Math.round(result.progress * 100)}%`; continue }
       if (!result.subitems) continue
+      chapters++
       const group = el('section', { class: 'search-group' },
-        el('h3', { class: 'search-chapter', text: result.label || 'Untitled section' }),
+        el('h3', { class: 'search-chapter' }, el('span', { text: result.label || 'Untitled section' }), el('span', { class: 'count', text: String(result.subitems.length) })),
         ...result.subitems.map(item => {
           count++
           const { pre = '', match = '', post = '' } = item.excerpt ?? {}
@@ -1263,7 +1283,7 @@ async function runSearch(query) {
     return
   }
   if (gen !== R?.searchGen) return
-  status.textContent = count ? `${count} ${count === 1 ? 'result' : 'results'} for “${query}”` : `No results for “${query}”`
+  status.textContent = count ? `${count} ${count === 1 ? 'result' : 'results'} for “${query}”${chapters > 1 ? ` in ${chapters} chapters` : ''}` : `No results for “${query}”`
 }
 
 function clearSearch() {
@@ -1286,9 +1306,19 @@ function buildAppearanceSheet() {
   themes.replaceChildren(...Object.entries(THEMES).map(([key, t]) => el('button', {
     type: 'button', class: 'theme-chip', dataset: { theme: key },
     style: `--bg:${t.bg};--fg:${t.fg};--line:${t.line}`,
-    'aria-label': `${t.name} theme`, onclick: () => setSettings({ theme: key }),
+    title: `${t.name} theme`, onclick: () => setSettings({ theme: key }),
   }, el('span', { class: 'theme-sample', 'aria-hidden': 'true', text: 'Aa' }), el('span', { class: 'theme-name', text: t.name }))))
   $('#aa-auto').addEventListener('change', e => setSettings({ theme: e.target.checked ? 'auto' : resolveThemeKey() }))
+  // Your own theme: two colours. Too little contrast is refused, with the reason.
+  const pickCustom = () => {
+    const bg = $('#aa-custom-bg').value, fg = $('#aa-custom-fg').value
+    const ratio = contrast(bg, fg)
+    const ok = setCustomTheme(bg, fg)
+    $('#aa-custom-note').textContent = !ok ? 'These two colours are too close to read. Pick a lighter page or a darker text.'
+      : ratio < 4.5 ? 'This is readable, but the contrast is low. It may tire your eyes.' : ''
+  }
+  $('#aa-custom-bg').addEventListener('input', pickCustom)
+  $('#aa-custom-fg').addEventListener('input', pickCustom)
 
   $('#aa-smaller').addEventListener('click', () => setSettings({ size: getSettings().size - 1 }))
   $('#aa-larger').addEventListener('click', () => setSettings({ size: getSettings().size + 1 }))
@@ -1326,7 +1356,10 @@ function syncAppearanceSheet() {
     const on = chip.dataset.theme === active
     chip.classList.toggle('on', on)
     chip.setAttribute('aria-pressed', String(on))
+    if (chip.dataset.theme === 'custom') { const t = THEMES.custom; chip.style.cssText = `--bg:${t.bg};--fg:${t.fg};--line:${t.line}` }
   }
+  $('#aa-custom').hidden = active !== 'custom'
+  if (active === 'custom' && document.activeElement?.type !== 'color') { $('#aa-custom-bg').value = THEMES.custom.bg; $('#aa-custom-fg').value = THEMES.custom.fg }
   $('#aa-auto').checked = s.theme === 'auto'
   $('#aa-size').textContent = `${s.size}`
   $('#aa-smaller').disabled = s.size <= LIMITS.size[0]
@@ -1342,4 +1375,19 @@ function syncAppearanceSheet() {
   for (const r of $$('input[name="aa-flow"]')) r.checked = r.value === s.flow
   $('#aa-pages-row').hidden = s.flow === 'scrolled'
   $('#aa-turn-row').hidden = s.flow === 'scrolled'
+}
+
+// ---------------------------------------------------------------- footnotes
+function showNote(text, href, marker) {
+  hideSelectionPop()
+  $('#note-title').textContent = /^\W*\d/.test(marker) ? `Note ${marker.replace(/[^\d]/g, '')}` : 'Note'
+  $('#note-text').textContent = text
+  $('#note-go').onclick = () => {
+    closeSheet()
+    let index
+    try { index = R?.view.resolveNavigation(href)?.index } catch { index = undefined }
+    if (Number.isInteger(index)) { R.jumpTurns = 0; R.jumpIndex = index; R.pendingJump = true }
+    setTimeout(() => R?.view.goTo(href).catch(() => {}), 60)
+  }
+  showSheet('sheet-note')
 }

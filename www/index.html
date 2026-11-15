@@ -63,6 +63,7 @@
     </button>
   </p>
 
+  <section id="tips" class="tips" aria-labelledby="tips-title" hidden></section>
   <section id="goal" class="goal" aria-labelledby="goal-title" hidden></section>
 
   <section id="now" class="now" aria-label="Continue reading" hidden></section>
@@ -93,6 +94,7 @@
         <label class="field select-field filter-select"><span class="sr">Author</span><select id="f-author"></select></label>
         <label class="field select-field filter-select"><span class="sr">Genre</span><select id="f-genre"></select></label>
         <label class="field select-field filter-select"><span class="sr">Series</span><select id="f-series"></select></label>
+        <label class="field select-field filter-select"><span class="sr">Shelf</span><select id="f-shelf"></select></label>
         <button type="button" id="f-clear" class="btn btn-quiet filter-clear" hidden>Clear</button>
       </div>
     </div>
@@ -104,7 +106,7 @@
   <section id="empty" class="empty" hidden>
     <p class="dot-number empty-number" aria-hidden="true">0</p>
     <h2>No books yet</h2>
-    <p>Add EPUB files from this device. They stay here, and work without a connection. PDFs with real text are turned into EPUBs as they are added.</p>
+    <p>Add books from this device: EPUB, PDF, Kindle (MOBI, AZW3), FB2 and comics (CBZ). They stay here, and work without a connection.</p>
     <button type="button" class="btn btn-solid" data-action="add">Add books</button>
     <p class="drop-note">Or drop them anywhere on this window.</p>
   </section>
@@ -165,7 +167,7 @@
 <!-- ============================ Sheets ============================ -->
 <div id="scrim" class="scrim"></div>
 
-<aside id="sheet-aa" class="sheet sheet-aa" role="dialog" aria-modal="true" aria-labelledby="aa-title" hidden>
+<div id="sheet-aa" class="sheet sheet-aa" role="dialog" aria-modal="true" aria-labelledby="aa-title" hidden>
   <div class="sheet-grip" aria-hidden="true"></div>
   <header class="sheet-head">
     <h2 id="aa-title">Appearance</h2>
@@ -175,6 +177,11 @@
   </header>
   <div class="sheet-body">
     <div id="aa-themes" class="themes" role="group" aria-label="Page theme"></div>
+    <div id="aa-custom" class="custom-theme" hidden>
+      <label class="custom-color"><span>Page</span><input type="color" id="aa-custom-bg" aria-label="Page colour"></label>
+      <label class="custom-color"><span>Text</span><input type="color" id="aa-custom-fg" aria-label="Text colour"></label>
+      <p id="aa-custom-note" class="setting-note" aria-live="polite"></p>
+    </div>
     <label class="row switch-row">
       <span>Match the app's light or dark</span>
       <input type="checkbox" id="aa-auto" class="switch">
@@ -227,9 +234,9 @@
     </div>
     <p class="fixed-only sheet-note">This book has a fixed layout, so only the page theme applies.</p>
   </div>
-</aside>
+</div>
 
-<aside id="sheet-detail" class="sheet panel detail-sheet" role="dialog" aria-modal="true" aria-labelledby="detail-title" hidden>
+<div id="sheet-detail" class="sheet panel detail-sheet" role="dialog" aria-modal="true" aria-labelledby="detail-title" hidden>
   <div class="sheet-grip" aria-hidden="true"></div>
   <header class="sheet-head">
     <h2 id="detail-title">Book page</h2>
@@ -241,9 +248,9 @@
     <div id="detail-top" class="detail-top"></div>
     <div id="detail-notes" class="detail-notes"></div>
   </div>
-</aside>
+</div>
 
-<aside id="sheet-stats" class="sheet panel stats-sheet" role="dialog" aria-modal="true" aria-labelledby="stats-title" hidden>
+<div id="sheet-stats" class="sheet panel stats-sheet" role="dialog" aria-modal="true" aria-labelledby="stats-title" hidden>
   <div class="sheet-grip" aria-hidden="true"></div>
   <header class="sheet-head">
     <h2 id="stats-title">Reading stats</h2>
@@ -252,9 +259,9 @@
     </button>
   </header>
   <div class="sheet-body" id="stats-body"></div>
-</aside>
+</div>
 
-<aside id="sheet-quote" class="sheet panel quote-sheet" role="dialog" aria-modal="true" aria-labelledby="quote-title" hidden>
+<div id="sheet-quote" class="sheet panel quote-sheet" role="dialog" aria-modal="true" aria-labelledby="quote-title" hidden>
   <div class="sheet-grip" aria-hidden="true"></div>
   <header class="sheet-head">
     <h2 id="quote-title">Quote card</h2>
@@ -267,9 +274,46 @@
     <div id="quote-styles" class="quote-styles" role="group" aria-label="Card style"></div>
     <button type="button" id="quote-save" class="btn btn-solid quote-save">Save or share</button>
   </div>
-</aside>
+</div>
 
-<aside id="sheet-edit" class="sheet panel edit-sheet" role="dialog" aria-modal="true" aria-labelledby="edit-title" hidden>
+<div id="sheet-shelves" class="sheet sheet-aa" role="dialog" aria-modal="true" aria-labelledby="shelves-title" hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <header class="sheet-head">
+    <h2 id="shelves-title">Shelves</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Close" title="Close">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </header>
+  <div class="sheet-body">
+    <div id="shelves-list"></div>
+    <form id="shelves-form" class="shelves-form" autocomplete="off">
+      <label class="sr" for="shelves-new">Name of a new shelf</label>
+      <span class="field"><input id="shelves-new" type="text" maxlength="40" placeholder="New shelf"></span>
+      <button type="submit" class="btn btn-quiet">Add</button>
+    </form>
+  </div>
+</div>
+
+<div id="sheet-covers" class="sheet panel" role="dialog" aria-modal="true" aria-labelledby="covers-title" hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <header class="sheet-head">
+    <h2 id="covers-title">Find missing covers</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Close" title="Close">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </header>
+  <div class="sheet-body">
+    <p class="setting-note">Looks up each book without a cover on Open Library. Only titles and authors are sent. Nothing is changed until you press Use these covers.</p>
+    <p id="covers-status" class="setting-note" aria-live="polite"></p>
+    <ul id="covers-list" class="covers-list"></ul>
+    <div class="covers-actions">
+      <button type="button" id="covers-stop" class="btn btn-quiet" hidden>Stop</button>
+      <button type="button" id="covers-apply" class="btn btn-solid" hidden>Use these covers</button>
+    </div>
+  </div>
+</div>
+
+<div id="sheet-edit" class="sheet panel edit-sheet" role="dialog" aria-modal="true" aria-labelledby="edit-title" hidden>
   <div class="sheet-grip" aria-hidden="true"></div>
   <header class="sheet-head">
     <h2 id="edit-title">Book details</h2>
@@ -320,9 +364,9 @@
       <ul id="edit-results" class="edit-results"></ul>
     </section>
   </div>
-</aside>
+</div>
 
-<aside id="sheet-dict" class="sheet panel dict-sheet" role="dialog" aria-modal="true" aria-labelledby="dict-title" hidden>
+<div id="sheet-dict" class="sheet panel dict-sheet" role="dialog" aria-modal="true" aria-labelledby="dict-title" hidden>
   <div class="sheet-grip" aria-hidden="true"></div>
   <header class="sheet-head">
     <h2 id="dict-title">Dictionary</h2>
@@ -338,11 +382,41 @@
     </form>
     <div id="dict-recent" class="dict-recent" hidden></div>
     <div id="dict-result" class="dict-result" aria-live="polite"></div>
+    <section id="vocab" class="vocab" aria-labelledby="vocab-title" hidden>
+      <div class="vocab-head">
+        <h3 id="vocab-title">Your words</h3>
+        <button type="button" id="vocab-review" class="btn btn-quiet vocab-btn">Review</button>
+      </div>
+      <ul id="vocab-list" class="vocab-list"></ul>
+    </section>
+    <section id="vocab-cards" class="vocab-cards" aria-label="Review your words" hidden>
+      <p id="card-count" class="setting-note"></p>
+      <button type="button" id="card" class="flash" aria-live="polite"></button>
+      <div class="flash-actions">
+        <button type="button" id="card-again" class="btn btn-quiet">Keep practising</button>
+        <button type="button" id="card-known" class="btn btn-solid">I know this</button>
+      </div>
+      <button type="button" id="card-done" class="link vocab-done">Back to the list</button>
+    </section>
     <p id="dict-hint" class="dict-hint">Works fully offline, with about 150,000 English words. Inside a book, hold or double-click any word for the same card.</p>
   </div>
-</aside>
+</div>
 
-<aside id="sheet-toc" class="sheet panel" role="dialog" aria-modal="true" aria-labelledby="toc-title" hidden>
+<div id="sheet-note" class="sheet sheet-aa note-sheet" role="dialog" aria-modal="true" aria-labelledby="note-title" hidden>
+  <div class="sheet-grip" aria-hidden="true"></div>
+  <header class="sheet-head">
+    <h2 id="note-title">Note</h2>
+    <button type="button" class="icon-btn" data-close aria-label="Close" title="Close">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </header>
+  <div class="sheet-body">
+    <p id="note-text" class="note-body"></p>
+    <button type="button" id="note-go" class="btn btn-quiet">Go to the note in the book</button>
+  </div>
+</div>
+
+<div id="sheet-toc" class="sheet panel" role="dialog" aria-modal="true" aria-labelledby="toc-title" hidden>
   <div class="sheet-grip" aria-hidden="true"></div>
   <header class="sheet-head">
     <h2 id="toc-title" class="sr">Contents and notes</h2>
@@ -356,13 +430,13 @@
     </button>
   </header>
   <div class="sheet-body">
-    <nav role="tabpanel" data-tab="toc" id="toc-list" aria-label="Table of contents"></nav>
+    <div role="tabpanel" data-tab="toc" id="toc-list" aria-label="Table of contents"></div>
     <div role="tabpanel" data-tab="marks" id="marks-list" hidden></div>
     <div role="tabpanel" data-tab="notes" id="notes-list" hidden></div>
   </div>
-</aside>
+</div>
 
-<aside id="sheet-search" class="sheet panel" role="dialog" aria-modal="true" aria-labelledby="search-title" hidden>
+<div id="sheet-search" class="sheet panel" role="dialog" aria-modal="true" aria-labelledby="search-title" hidden>
   <div class="sheet-grip" aria-hidden="true"></div>
   <header class="sheet-head">
     <h2 id="search-title" class="sr">Search in book</h2>
@@ -378,9 +452,9 @@
     </button>
   </header>
   <div class="sheet-body" id="search-results"></div>
-</aside>
+</div>
 
-<aside id="sheet-settings" class="sheet sheet-aa" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+<div id="sheet-settings" class="sheet sheet-aa" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
   <div class="sheet-grip" aria-hidden="true"></div>
   <header class="sheet-head">
     <h2 id="settings-title">Settings</h2>
@@ -397,6 +471,11 @@
       <span class="setting-label">Your name</span>
       <input type="text" id="set-name" class="text-input" maxlength="24" autocomplete="given-name" spellcheck="false" placeholder="Shown on the welcome screen">
     </label>
+    <div class="setting">
+      <span class="setting-label">Covers</span>
+      <button type="button" id="covers-open" class="btn btn-quiet">Find missing covers</button>
+      <p class="setting-note" id="covers-note"></p>
+    </div>
     <div class="setting backup-block">
       <span class="setting-label">Backup</span>
       <p class="setting-note">Everything in Quire lives on this device. A backup is one file with your books, your place in each, highlights, notes, goals, stats and settings. Keep it somewhere safe, or use it to move to another device.</p>
@@ -466,7 +545,7 @@
       <p>Your books, highlights and notes stay on this device. Quire never sends a word you look up anywhere.</p>
     </section>
   </div>
-</aside>
+</div>
 
 <!-- Full window (desktop): slides down when the pointer reaches the top edge. -->
 <button type="button" id="fw-exit" class="fw-exit" aria-label="Leave full window" hidden>
@@ -514,7 +593,7 @@
 </dialog>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<div id="drop-overlay" class="drop-overlay" aria-hidden="true"><p>Drop EPUB or PDF files to add them</p></div>
-<input type="file" id="file-input" accept=".epub,application/epub+zip,.pdf,application/pdf" multiple hidden>
+<div id="drop-overlay" class="drop-overlay" aria-hidden="true"><p>Drop books to add them</p></div>
+<input type="file" id="file-input" accept=".epub,application/epub+zip,.pdf,application/pdf,.mobi,.azw,.azw3,.prc,.fb2,.fbz,.cbz" multiple hidden>
 </body>
 </html>

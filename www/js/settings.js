@@ -4,11 +4,37 @@
 const KEY = 'quire.settings.v1'
 
 export const THEMES = {
-  paper: { name: 'Paper', bg: '#ffffff', fg: '#1c1c1c', muted: '#7a7a7a', line: '#e8e8e8', link: '#1c1c1c', sel: 'rgba(255,95,0,.22)', dark: false },
-  linen: { name: 'Linen', bg: '#f4ecdf', fg: '#3a2f25', muted: '#8c7c6a', line: '#e3d7c4', link: '#3a2f25', sel: 'rgba(90,60,20,.18)', dark: false },
-  slate: { name: 'Slate', bg: '#2b2c2f', fg: '#d2d2d4', muted: '#8d8e93', line: '#3b3c40', link: '#e6e6e8', sel: 'rgba(255,106,26,.3)', dark: true },
-  ember: { name: 'Ember', bg: '#17110c', fg: '#e8d5b9', muted: '#8f7b63', line: '#2b2218', link: '#ff9a52', sel: 'rgba(255,106,26,.32)', dark: true },
-  night: { name: 'Night', bg: '#000000', fg: '#bdbdbd', muted: '#6f6f6f', line: '#1f1f1f', link: '#dcdcdc', sel: 'rgba(255,106,26,.34)', dark: true },
+  paper: { name: 'Paper', bg: '#ffffff', fg: '#1c1c1c', muted: '#6e6e6e', line: '#e8e8e8', link: '#1c1c1c', sel: 'rgba(255,95,0,.22)', dark: false },
+  linen: { name: 'Linen', bg: '#f4ecdf', fg: '#3a2f25', muted: '#766756', line: '#e3d7c4', link: '#3a2f25', sel: 'rgba(90,60,20,.18)', dark: false },
+  slate: { name: 'Slate', bg: '#2b2c2f', fg: '#d2d2d4', muted: '#9c9da2', line: '#3b3c40', link: '#e6e6e8', sel: 'rgba(255,106,26,.3)', dark: true },
+  ember: { name: 'Ember', bg: '#17110c', fg: '#e8d5b9', muted: '#96826a', line: '#2b2218', link: '#ff9a52', sel: 'rgba(255,106,26,.32)', dark: true },
+  night: { name: 'Night', bg: '#000000', fg: '#bdbdbd', muted: '#7d7d7d', line: '#1f1f1f', link: '#dcdcdc', sel: 'rgba(255,106,26,.34)', dark: true },
+}
+
+// ---------------------------------------------------------------- your own theme
+// A sixth theme made from two colours the person picks: page and text.
+// Everything else (quiet text, rules, selection) is worked out from those two.
+const HEX = /^#[0-9a-f]{6}$/i
+const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
+const lum = hex => { const [r, g, b] = rgb(hex).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4 }); return 0.2126 * r + 0.7152 * g + 0.0722 * b }
+export const contrast = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05) }
+const mix = (a, b, t) => '#' + rgb(a).map((v, i) => Math.round(v + (rgb(b)[i] - v) * t).toString(16).padStart(2, '0')).join('')
+
+function buildCustom({ bg, fg } = {}) {
+  if (!HEX.test(bg || '') || !HEX.test(fg || '') || contrast(bg, fg) < 3) { bg = '#f6f1e7'; fg = '#2a2a2e' }
+  const dark = lum(bg) < 0.2
+  return { name: 'Custom', bg: bg.toLowerCase(), fg: fg.toLowerCase(), muted: mix(fg, bg, 0.48), line: mix(fg, bg, 0.86), link: fg.toLowerCase(), sel: dark ? 'rgba(255,106,26,.32)' : 'rgba(255,95,0,.22)', dark }
+}
+const storedCustom = () => { try { return JSON.parse(localStorage.getItem('quire.flag.customTheme')) ?? {} } catch { return {} } }
+THEMES.custom = buildCustom(storedCustom())
+
+// Returns false (and changes nothing) when the two colours are too close to read.
+export function setCustomTheme(bg, fg) {
+  if (!HEX.test(bg) || !HEX.test(fg) || contrast(bg, fg) < 3) return false
+  THEMES.custom = buildCustom({ bg, fg })
+  try { localStorage.setItem('quire.flag.customTheme', JSON.stringify({ bg: THEMES.custom.bg, fg: THEMES.custom.fg })) } catch { /* kept for this session */ }
+  setSettings({ theme: 'custom' })
+  return true
 }
 
 export const FONTS = {
@@ -33,7 +59,16 @@ export const TURNS = { slide: 'Slide', page: 'Curl', none: 'None' }
 export const APPEARANCES = { system: 'System', light: 'Light', dark: 'Dark', evening: 'Evening' }
 
 // Advanced settings: how the app itself looks and behaves.
-export const STYLES = { quire: 'Quire', typewriter: 'Typewriter', matrix: 'Dot matrix' }
+export const STYLES = { quire: 'Quire', paperback: 'Paperback', studio: 'Studio', blueprint: 'Blueprint', typewriter: 'Typewriter', matrix: 'Dot matrix' }
+// What each style brings with it. The person can change any of these afterwards.
+const STYLE_PRESETS = {
+  quire: { pattern: 'dots', corners: 'round', accent: 'orange' },
+  paperback: { pattern: 'none', corners: 'round', accent: 'red' },
+  studio: { pattern: 'none', corners: 'round', accent: 'orange' },
+  blueprint: { pattern: 'grid', corners: 'square', accent: 'blue' },
+  typewriter: { pattern: 'lines', corners: 'square', accent: 'orange' },
+  matrix: { pattern: 'dots', corners: 'round', accent: 'orange' },
+}
 export const UI_FONTS = { geist: 'Geist', atkinson: 'Atkinson', typewriter: 'Typewriter', system: 'System' }
 export const ACCENTS = { orange: 'Orange', red: 'Red', blue: 'Blue', green: 'Green', graphite: 'Graphite' }
 export const PATTERNS = { dots: 'Dots', grid: 'Grid', lines: 'Lines', diagonal: 'Diagonal', none: 'None' }
@@ -144,8 +179,8 @@ export function setSettings(patch) {
 // puts back the usual faces, so nothing stays in Courier by surprise.
 export function setStyle(style) {
   const s = state
-  if (style === 'typewriter') return setSettings({ style, uiFont: 'typewriter', font: 'typewriter', justify: false, hyphenate: false })
-  const patch = { style }
+  if (style === 'typewriter') return setSettings({ style, ...STYLE_PRESETS.typewriter, uiFont: 'typewriter', font: 'typewriter', justify: false, hyphenate: false })
+  const patch = { style, ...STYLE_PRESETS[style] }
   if (s.uiFont === 'typewriter') patch.uiFont = DEFAULTS.uiFont
   if (s.font === 'typewriter') { patch.font = DEFAULTS.font; patch.justify = DEFAULTS.justify; patch.hyphenate = DEFAULTS.hyphenate }
   setSettings(patch)

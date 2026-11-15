@@ -12,6 +12,35 @@ async function isZip(file) {
   return head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04
 }
 
+// ---------------------------------------------------------------- formats
+// What Quire can open besides EPUB. The engine picks its parser by file name
+// and type, so each kind carries the name ending and type it expects.
+const KINDS = {
+  epub: { ext: 'epub', type: 'application/epub+zip', label: 'EPUB' },
+  mobi: { ext: 'mobi', type: 'application/x-mobipocket-ebook', label: 'Kindle' },
+  fb2: { ext: 'fb2', type: 'application/x-fictionbook+xml', label: 'FictionBook' },
+  fbz: { ext: 'fbz', type: 'application/x-zip-compressed-fb2', label: 'FictionBook' },
+  cbz: { ext: 'cbz', type: 'application/vnd.comicbook+zip', label: 'Comic' },
+}
+const BOOK_EXT = /\.(epub|mobi|azw3?|prc|kf8|fb2|fb2\.zip|fbz|cbz)$/i
+
+async function kindOf(file) {
+  const name = (file.name || '').toLowerCase()
+  if (await isZip(file)) {
+    if (name.endsWith('.cbz') || file.type === KINDS.cbz.type) return 'cbz'
+    if (name.endsWith('.fbz') || name.endsWith('.fb2.zip') || file.type === KINDS.fbz.type) return 'fbz'
+    return 'epub'
+  }
+  try {
+    const head = new Uint8Array(await file.slice(0, 2048).arrayBuffer())
+    if (String.fromCharCode(...head.subarray(60, 68)) === 'BOOKMOBI') return 'mobi'
+    if (name.endsWith('.fb2') || String.fromCharCode(...head).includes('<FictionBook')) return 'fb2'
+  } catch { /* unreadable */ }
+  return null
+}
+
+const asKind = (buffer, kind) => new File([buffer], `book.${KINDS[kind].ext}`, { type: KINDS[kind].type })
+
 async function fingerprint(buffer, file) {
   // SHA-256 needs a secure context (https or localhost).
   if (globalThis.crypto?.subtle) {
@@ -54,7 +83,7 @@ export function cleanGenres(input) {
   const out = []
   const seen = new Set()
   for (const piece of raw.flatMap(s => String(s).split(/\s*(?:\/|;|,|\||--|—|>)\s*/))) {
-    const g = cleanText(piece, 60).replace(/^[\s.:-]+|[\s.:-]+$/g, '')
+    const g = cleanText(piece.replace(/_/g, ' '), 60).replace(/^[\s.:-]+|[\s.:-]+$/g, '')
     if (g.length < 3 || g.length > 32) continue
     if (/^[A-Z]{3}\d{6}$/.test(g) || /^\d+$/.test(g) || /^(general|unknown|ebook|ebooks|book|books)$/i.test(g)) continue
     const nice = g === g.toLowerCase() || g === g.toUpperCase() ? g.toLowerCase().replace(/(^|[\s-])\p{L}/gu, c => c.toUpperCase()) : g
@@ -81,6 +110,10 @@ function seriesOf(meta) {
   return { series: cleanText(langMap(hit.name), 120), seriesIndex: cleanSeriesIndex(hit.position) }
 }
 
+// Some formats report the file's own name as the title, or "Unknown" as the author.
+const realTitle = (meta, named) => { const t = cleanText(langMap(meta.title)); return t && t !== named.name ? t : '' }
+const realAuthor = meta => { const a = cleanText(formatAuthors(meta.author)); return /^(unknown|anonymous)$/i.test(a) ? '' : a }
+
 export const META_VERSION = 1
 const extraMeta = meta => ({ ...seriesOf(meta), genres: cleanGenres(meta.subject ?? []), metaV: META_VERSION })
 
@@ -96,20 +129,24 @@ export async function importFile(file) {
   const label = file.name || 'This file'
   if (!file.size) throw new ImportError(`${label} is empty.`)
   if (file.size > MAX_BYTES) throw new ImportError(`${label} is larger than 600 MB.`)
-  if (!(await isZip(file))) throw new ImportError(`${label} is not an EPUB file.`)
+  const kind = await kindOf(file)
+  if (!kind) throw new ImportError(/\.(mobi|azw3?|prc|kf8)$/i.test(file.name || '')
+    ? `${label} is an old or copy-protected Kindle file that Quire cannot open.`
+    : `${label} is not a book Quire can open. It reads EPUB, PDF, Kindle (MOBI, AZW3), FB2 and CBZ.`)
 
   const buffer = await file.arrayBuffer()
   const id = await fingerprint(buffer, file)
   const existing = await db.get('books', id)
   if (existing) return { book: existing, status: 'exists' }
 
-  // The engine sniffs by name; a File keeps it.
-  const named = new File([buffer], file.name || 'book.epub', { type: 'application/epub+zip' })
+  const named = asKind(buffer, kind)
   let parsed
   try {
     parsed = await makeBook(named)
   } catch {
-    throw new ImportError(`${label} could not be opened. The file may be damaged.`)
+    throw new ImportError(kind === 'mobi'
+      ? `${label} could not be opened. It may be damaged, or copy-protected (books bought from Kindle usually are).`
+      : `${label} could not be opened. The file may be damaged.`)
   }
   if (!parsed?.sections?.length) throw new ImportError(`${label} has no readable pages.`)
 
@@ -118,13 +155,14 @@ export async function importFile(file) {
   try { coverBlob = await parsed.getCover?.() } catch { coverBlob = null }
   const thumb = await makeThumb(coverBlob)
 
-  const fallbackTitle = (file.name || 'Untitled').replace(/\.epub$/i, '')
+  const fallbackTitle = (file.name || 'Untitled').replace(BOOK_EXT, '')
   const record = {
     id,
-    title: cleanText(langMap(meta.title)) || cleanText(fallbackTitle),
-    author: cleanText(formatAuthors(meta.author)),
+    title: realTitle(meta, named) || cleanText(fallbackTitle),
+    author: realAuthor(meta),
     language: Array.isArray(meta.language) ? meta.language[0] : (meta.language || ''),
     fixedLayout: parsed.rendition?.layout === 'pre-paginated',
+    format: kind,
     size: file.size,
     fileName: cleanText(file.name, 200),
     cover: thumb,
@@ -135,7 +173,7 @@ export async function importFile(file) {
     cfi: null,
     chapter: '',
   }
-  await db.addBook(record, { id, name: named.name, buffer })
+  await db.addBook(record, { id, name: named.name, kind, buffer })
   return { book: record, status: 'added' }
 }
 
@@ -151,7 +189,7 @@ export async function requestPersistence() {
 export async function loadBookFile(id) {
   const rec = await db.get('files', id)
   if (!rec) return null
-  return new File([rec.buffer], rec.name || 'book.epub', { type: 'application/epub+zip' })
+  return asKind(rec.buffer, rec.kind in KINDS ? rec.kind : 'epub')
 }
 
 // The title, author and cover as the EPUB file itself states them.
@@ -162,9 +200,12 @@ export async function readOriginal(id) {
   let coverBlob = null
   try { coverBlob = await parsed.getCover?.() } catch { coverBlob = null }
   return {
-    title: cleanText(langMap(meta.title)) || cleanText((file.name || 'Untitled').replace(/\.epub$/i, '')),
+    title: cleanText(langMap(meta.title)) || 'Untitled',
     author: cleanText(formatAuthors(meta.author)),
     cover: await makeThumb(coverBlob),
     ...extraMeta(meta),
   }
 }
+
+export const formatLabel = kind => KINDS[kind]?.label ?? 'EPUB'
+export const isBookName = name => BOOK_EXT.test(name || '')

@@ -484,7 +484,7 @@ foliate-view::part(head), foliate-view::part(foot) {
 .segmented input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 1px; }
 
 /* appearance */
-.themes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 4px; }
+.themes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 4px; }
 .theme-chip { display: grid; gap: 6px; justify-items: center; }
 .theme-sample {
   display: grid; place-items: center; width: 100%; aspect-ratio: 1.15;
@@ -1357,3 +1357,143 @@ body:not(.reading) { background-image: radial-gradient(90% 560px at 22% 0, color
   .add-btn { margin-left: 6px; }
 }
 @media (max-width: 340px) { .wm-dots { height: 30px; } .lib-actions .icon-btn { width: 36px; } }
+
+/* ---------------------------------------------------------------- footnote card */
+.note-body { margin: 2px 0 20px; font-family: 'Quire Literata', Georgia, serif; font-size: 17px; line-height: 1.6; max-height: 46vh; overflow-y: auto; overflow-wrap: anywhere; }
+
+/* ---------------------------------------------------------------- your words */
+.vocab { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--hair); }
+.vocab-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.vocab-head h3 { margin: 0; font-size: var(--t-m); font-weight: 600; }
+.vocab-btn { min-height: 36px; padding: 0 14px; font-size: var(--t-s); }
+.vocab-list { list-style: none; margin: 0; padding: 0; }
+.vocab-item { display: flex; align-items: flex-start; gap: 4px; border-top: 1px solid var(--hair); }
+.vocab-item:first-child { border-top: 0; }
+.vocab-main { flex: 1; min-width: 0; display: grid; gap: 3px; padding: 12px 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.vocab-word { display: flex; align-items: baseline; gap: 8px; }
+.vocab-word b { font-weight: 620; font-size: var(--t-m); }
+.vocab-word i { font-size: var(--t-xs); color: var(--ink-2); }
+.vocab-known { margin-left: auto; padding: 1px 8px; border-radius: 999px; background: var(--wash); font-size: 11.5px; color: var(--ink-2); }
+.vocab-def { font-size: var(--t-s); line-height: 1.45; }
+.vocab-ctx { font-size: var(--t-xs); color: var(--ink-2); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.vocab-item.is-known .vocab-def { color: var(--ink-2); }
+.vocab-x { margin-top: 6px; color: var(--ink-2); }
+.vocab-cards { display: grid; gap: 14px; margin-top: 8px; }
+.vocab-cards[hidden] { display: none; }
+.flash { display: grid; align-content: center; gap: 14px; min-height: 230px; padding: 28px 24px; border: 0; border-radius: 18px; background: var(--wash); color: inherit; font: inherit; text-align: center; cursor: pointer; box-shadow: inset 0 0 0 1px var(--hair); }
+.flash-word { font-size: 30px; font-weight: 640; letter-spacing: -.01em; }
+.flash-ctx { font-family: 'Quire Literata', Georgia, serif; font-size: 16px; line-height: 1.55; color: var(--ink-2); }
+.flash-def { font-size: var(--t-m); line-height: 1.5; }
+.flash-def i { color: var(--ink-2); }
+.flash-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.vocab-done { justify-self: center; font-size: var(--t-s); color: var(--ink-2); }
+:root[data-corners="square"] .flash { border-radius: 2px; }
+
+/* ---------------------------------------------------------------- your own theme */
+.custom-theme { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 12px 14px; margin: 10px 0 4px; border-radius: 14px; background: var(--wash); }
+.custom-theme[hidden] { display: none; }
+.custom-color { display: inline-flex; align-items: center; gap: 10px; font-size: var(--t-s); }
+.custom-color input { width: 44px; height: 32px; padding: 0; border: 1px solid var(--hair); border-radius: 8px; background: none; cursor: pointer; }
+.custom-theme .setting-note { flex-basis: 100%; margin: 0; }
+.custom-theme .setting-note:empty { display: none; }
+.search-chapter { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+
+/* ---------------------------------------------------------------- your shelves, missing covers */
+.shelf-remove { margin-left: auto; width: 36px; height: 36px; color: var(--ink-2); opacity: 0; transition: opacity .15s; }
+.series-shelf:hover .shelf-remove, .shelf-remove:focus-visible { opacity: 1; }
+@media (hover: none) { .shelf-remove { opacity: .7; } }
+.series-head { align-items: center; min-height: 36px; }
+.shelves-form { display: flex; gap: 8px; margin-top: 14px; }
+.shelves-form .field { flex: 1; }
+.shelves-form .field input { width: 100%; }
+.covers-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.covers-item { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-top: 1px solid var(--hair); }
+.covers-item img { flex: none; width: 44px; height: 66px; object-fit: cover; border-radius: 3px; box-shadow: 0 0 0 1px var(--hair); }
+.covers-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.covers-text b { font-weight: 560; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.covers-text span { font-size: var(--t-xs); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.covers-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+@media (max-width: 640px) { .filter-selects { grid-template-columns: repeat(2, minmax(0, 1fr)); } .filter-selects:has(.filter-clear:not([hidden])) { grid-template-columns: repeat(2, minmax(0, 1fr)); } .filter-clear { grid-column: 1 / -1; justify-self: start; } }
+
+/* ================================================================ three more styles
+   Each one is a small set of tokens: its own paper and ink (light and dark),
+   its own title face, and one detail that belongs to it. The colours apply to
+   the home screen and its sheets; inside a book the page theme still decides. */
+.style-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 16px; }
+:is([data-style="paperback"], [data-style="studio"], [data-style="blueprint"]) .wm-dots { display: none; }
+:is([data-style="paperback"], [data-style="studio"], [data-style="blueprint"]) .wm-type { display: inline; }
+:is([data-style="paperback"], [data-style="studio"], [data-style="blueprint"]) .dot-number { font-variation-settings: normal; letter-spacing: -.03em; line-height: .95; }
+:is([data-style="paperback"], [data-style="studio"], [data-style="blueprint"]) .dot-unit { font-family: var(--ui); }
+
+/* ---- Paperback: a well-made printed book. Cream paper, brown-black ink, serif titles, small caps. */
+:root[data-style="paperback"] { --dot: var(--serif); }
+:root[data-style="paperback"][data-ui="light"] body:not(.reading) { --canvas: #f5efe3; --ink: #221d18; --ink-2: #6b5f51; --hair: #dfd4c0; --wash: #ece3d2; --raise: 0 1px 2px rgba(60,40,10,.08), 0 14px 34px -10px rgba(60,40,10,.28); }
+:root[data-style="paperback"][data-ui="dark"] body:not(.reading) { --canvas: #16120e; --ink: #efe6d6; --ink-2: #a89b8b; --hair: #2c251d; --wash: #201a14; }
+:root[data-style="paperback"][data-accent="red"][data-ui="light"] body { --signal: #b4432f; --signal-ink: #9a3521; --on-signal: #fff; }
+:root[data-style="paperback"][data-accent="red"][data-ui="dark"] body { --signal: #e27a62; --signal-ink: #ee9a86; --on-signal: #000; }
+:root[data-style="paperback"] .wm-type { font-family: var(--serif); font-style: italic; font-weight: 600; letter-spacing: -.02em; }
+:root[data-style="paperback"] :is(.shelf-head h2, .now-title, .sheet-head h2, .dialog h2, .empty h2, .series-head h3, .grid-title, .detail-title, .flash-word, .stats-block h3) { font-family: var(--serif); font-weight: 600; letter-spacing: -.01em; }
+:root[data-style="paperback"] .now-title { font-weight: 500; }
+:root[data-style="paperback"] .dot-number { font-weight: 400; font-feature-settings: 'onum' 1; }
+:root[data-style="paperback"] :is(.now-kicker, .goal-head > :first-child, .setting-label, .book-status, .count) { font-variant-caps: all-small-caps; letter-spacing: .06em; font-size: calc(var(--t-s) + 1px); }
+:root[data-style="paperback"] .book-status.is-new { font-size: 12.5px; }
+:root[data-style="paperback"] .now { border-bottom: 3px double var(--hair); }
+:root[data-style="paperback"] :is(.cover img, .cover-plain) { border-radius: 2px 5px 5px 2px; }
+:root[data-style="paperback"] :is(.series-shelf, .goal) { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+
+/* ---- Studio: a mid-century instrument panel. Warm grey, graphite, one orange mark, squared controls. */
+:root[data-style="studio"] { --ui: 'Quire Inter', ui-sans-serif, system-ui, sans-serif; --dot: 'Quire Inter', sans-serif; }
+:root[data-style="studio"][data-ui="light"] body:not(.reading) { --canvas: #efeeea; --ink: #191918; --ink-2: #62615b; --hair: #d9d8d1; --wash: #e4e3dd; }
+:root[data-style="studio"][data-ui="dark"] body:not(.reading) { --canvas: #1b1b1a; --ink: #f1f0ec; --ink-2: #a3a29b; --hair: #313130; --wash: #252524; }
+:root[data-style="studio"] .wm-type { font-family: 'Quire Inter', sans-serif; font-weight: 800; letter-spacing: -.06em; }
+:root[data-style="studio"] :is(.shelf-head h2, .now-title, .sheet-head h2, .dialog h2, .empty h2, .series-head h3, .grid-title, .detail-title) { font-weight: 700; letter-spacing: -.03em; }
+:root[data-style="studio"] .dot-number { font-weight: 800; letter-spacing: -.06em; font-variant-numeric: tabular-nums; }
+:root[data-style="studio"] :is(.btn, .add-btn, .filters .chip, .filter-select select, .chip, .select-field select, .field input, .book-status.is-new, .detail-facts li) { border-radius: 9px; }
+:root[data-style="studio"] :is(.goal, .series-shelf, .stat, .flash) { border-radius: 12px; background: var(--canvas); box-shadow: inset 0 0 0 1px var(--hair); }
+:root[data-style="studio"] :is(.shelf-head h2, .grid-title)::before { content: ''; display: inline-block; width: 9px; height: 9px; margin-right: 11px; border-radius: 2px; background: var(--signal); vertical-align: 1px; }
+:root[data-style="studio"] :is(.cover img, .cover-plain) { border-radius: 4px; }
+:root[data-style="studio"] .now { border-bottom-width: 2px; border-bottom-color: var(--ink); }
+
+/* ---- Blueprint: drafting paper. Pale blue (navy at night), slab titles, typed labels, dashed rules. */
+:root[data-style="blueprint"] { --dot: 'Quire Bitter', Georgia, serif; }
+:root[data-style="blueprint"][data-ui="light"] body:not(.reading) { --canvas: #eef3f9; --ink: #10294d; --ink-2: #4a6182; --hair: #c9d8ea; --wash: #e0e9f4; --raise: 0 1px 2px rgba(16,41,77,.08), 0 14px 34px -10px rgba(16,41,77,.3); }
+:root[data-style="blueprint"][data-ui="dark"] body:not(.reading) { --canvas: #0b1b33; --ink: #e8f1ff; --ink-2: #93a9c9; --hair: #203a60; --wash: #12264a; }
+:root[data-style="blueprint"][data-accent="blue"][data-ui="light"] body { --signal: #1d5fd0; --signal-ink: #1a55bb; --on-signal: #fff; }
+:root[data-style="blueprint"][data-accent="blue"][data-ui="dark"] body { --signal: #6fd3ff; --signal-ink: #8fdcff; --on-signal: #00131f; }
+:root[data-style="blueprint"] .wm-type { font-family: 'Quire Bitter', Georgia, serif; font-weight: 700; letter-spacing: -.03em; }
+:root[data-style="blueprint"] :is(.shelf-head h2, .now-title, .sheet-head h2, .dialog h2, .empty h2, .series-head h3, .grid-title, .detail-title, .flash-word) { font-family: 'Quire Bitter', Georgia, serif; font-weight: 600; letter-spacing: -.015em; }
+:root[data-style="blueprint"] .dot-number { font-weight: 300; }
+:root[data-style="blueprint"] :is(.now-kicker, .count, .book-status, .book-sub, .setting-label, .now-chapter) { font-family: 'Quire Typewriter', 'Courier New', monospace; letter-spacing: -.01em; }
+:root[data-style="blueprint"] .now { border-bottom: 1px dashed color-mix(in srgb, var(--ink) 35%, transparent); }
+:root[data-style="blueprint"] :is(.series-shelf, .goal) { background: color-mix(in srgb, var(--canvas) 70%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 22%, transparent); }
+:root[data-style="blueprint"] .series-shelf::before { content: ''; position: absolute; left: -1px; top: -1px; width: 9px; height: 9px; border-left: 2px solid var(--signal); border-top: 2px solid var(--signal); }
+:root[data-style="blueprint"] .series-shelf::after { content: ''; position: absolute; right: -1px; bottom: -1px; width: 9px; height: 9px; border-right: 2px solid var(--signal); border-bottom: 2px solid var(--signal); }
+
+/* previews in Settings */
+.style-card[data-style-card="paperback"] .style-sample { background: #f5efe3; color: #221d18; }
+.style-card[data-style-card="paperback"] .style-aa { font-family: 'Quire Literata', Georgia, serif; font-style: italic; font-weight: 600; }
+.style-card[data-style-card="paperback"] .style-stop { background: #b4432f; }
+.style-card[data-style-card="studio"] .style-sample { background: #efeeea; color: #191918; border-radius: 9px; }
+.style-card[data-style-card="studio"] .style-aa { font-family: 'Quire Inter', sans-serif; font-weight: 800; letter-spacing: -.06em; }
+.style-card[data-style-card="studio"] .style-stop { border-radius: 2px; background: #ff5f00; }
+.style-card[data-style-card="blueprint"] .style-sample { background-color: #0b1b33; color: #e8f1ff; border-radius: 2px;
+  background-image: linear-gradient(rgba(232,241,255,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(232,241,255,.12) 1px, transparent 1px); background-size: 12px 12px; }
+.style-card[data-style-card="blueprint"] .style-aa { font-family: 'Quire Bitter', Georgia, serif; font-weight: 600; }
+.style-card[data-style-card="blueprint"] .style-stop { border-radius: 0; background: #6fd3ff; }
+
+:root[data-style="studio"][data-ui="light"] body:not(.reading) { --signal-ink: #ad3d00; }
+
+/* ---------------------------------------------------------------- first tips */
+.tips { margin-bottom: clamp(20px, 3vw, 32px); padding: 20px 24px 22px; border-radius: 18px; box-shadow: inset 0 0 0 1px var(--hair); background: color-mix(in srgb, var(--signal) 5%, var(--canvas)); }
+.tips[hidden] { display: none; }
+.tips-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.tips-head h2 { margin: 0; font-size: var(--t-m); font-weight: 620; }
+.tips-done { min-height: 36px; padding: 0 16px; font-size: var(--t-s); }
+.tips-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 28px; counter-reset: tip; }
+.tips-list li { display: grid; gap: 4px; font-size: var(--t-s); line-height: 1.5; color: var(--ink-2); counter-increment: tip; }
+.tips-list b { color: var(--ink); font-weight: 600; }
+@media (max-width: 760px) { .tips-list { grid-template-columns: minmax(0, 1fr); } .tips { padding: 16px 18px 18px; } }
+:root[data-corners="square"] .tips { border-radius: 2px; }
+
+/* The finished tick sits on the cover's bottom corner: covers differ in height, their bottoms do not. */
+.book.is-done .book-open::before { top: auto; bottom: -7px; }

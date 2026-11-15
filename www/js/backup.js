@@ -29,7 +29,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/
 const COLORS = new Set(['yellow', 'green', 'blue', 'pink', 'purple'])
 
 // ---------------------------------------------------------------- saving
-const BOOK_FIELDS = ['id', 'title', 'author', 'language', 'fixedLayout', 'size', 'fileName', 'addedAt', 'openedAt', 'progress', 'cfi', 'chapter', 'finishedAt', 'minsLeft', 'series', 'seriesIndex', 'genres']
+const BOOK_FIELDS = ['id', 'title', 'author', 'language', 'fixedLayout', 'size', 'fileName', 'addedAt', 'openedAt', 'progress', 'cfi', 'chapter', 'finishedAt', 'minsLeft', 'series', 'seriesIndex', 'genres', 'format', 'shelves']
 const NOTE_FIELDS = ['id', 'bookId', 'type', 'cfi', 'index', 'color', 'text', 'note', 'chapter', 'fraction', 'createdAt']
 const pick = (obj, keys) => Object.fromEntries(keys.filter(k => obj[k] !== undefined).map(k => [k, obj[k]]))
 
@@ -46,7 +46,7 @@ export async function makeBackup({ withBooks = true, onProgress = () => {} } = {
   const manifest = {
     app: 'quire', format: FORMAT, created: new Date().toISOString(), withBooks,
     settings: getSettings(),
-    flags: { goal: getFlag('goal', null), readingDays: getFlag('readingDays', {}), sort: getFlag('sort', null), dictRecent: getFlag('dictRecent', []) },
+    flags: { goal: getFlag('goal', null), readingDays: getFlag('readingDays', {}), sort: getFlag('sort', null), dictRecent: getFlag('dictRecent', []), vocab: getFlag('vocab', []), shelves: getFlag('shelves', []), customTheme: getFlag('customTheme', null) },
     books: books.map(b => ({ ...pick(b, BOOK_FIELDS), cover: b.cover?.buffer ? { type: b.cover.type || 'image/jpeg' } : null })),
     annotations: annotations.map(a => pick(a, NOTE_FIELDS)),
   }
@@ -82,6 +82,7 @@ function cleanBook(raw) {
     cfi: typeof raw.cfi === 'string' && raw.cfi.length <= 2000 && raw.cfi.startsWith('epubcfi(') ? raw.cfi : null,
     chapter: text(raw.chapter, 300),
     hasCover: !!raw.cover,
+    ext: ({ cbz: 'cbz', fbz: 'fbz', fb2: 'fb2', mobi: 'mobi' })[raw.format] ?? 'epub',
   }
   if (typeof raw.series === 'string') { out.series = text(raw.series, 120).replace(/\s+/g, ' ').trim(); out.seriesIndex = out.series ? cleanSeriesIndex(raw.seriesIndex) : null }
   if (Array.isArray(raw.genres)) out.genres = cleanGenres(raw.genres.filter(g => typeof g === 'string').slice(0, 12))
@@ -178,7 +179,8 @@ export async function restoreBackup(file, { onProgress = () => {} } = {}) {
       const blob = await zip.blob(name, 'application/epub+zip')
       // The id is the SHA-256 of the book: if the bytes do not match, it is not that book.
       if (await sha256(await blob.arrayBuffer()) !== b.id) { result.skipped++; continue }
-      const { book } = await importFile(new File([blob], `${b.title || 'book'}.epub`, { type: 'application/epub+zip' }))
+      // The importer works out the format from the bytes; the name only helps with comics and FictionBook.
+      const { book } = await importFile(new File([blob], `book.${b.ext}`))
       if (book.id !== b.id) { result.skipped++; continue }
       const patch = { ...state }
       if (b.title) patch.title = b.title
@@ -220,6 +222,15 @@ export async function restoreBackup(file, { onProgress = () => {} } = {}) {
     for (const [k, v] of Object.entries(f.readingDays).slice(0, 2000))
       if (DAY.test(k) && Number.isFinite(v) && v > 0) days[k] = Math.max(Number(days[k]) || 0, Math.min(86_400, Math.round(v)))
     setFlag('readingDays', days)
+  }
+  if (Array.isArray(f.vocab)) {
+    // Words are plain text; anything else is dropped. Words already here are kept.
+    const str = (v, n) => typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, n) : ''
+    const mine = Array.isArray(getFlag('vocab', [])) ? getFlag('vocab', []) : []
+    const have = new Set(mine.map(v => v?.w))
+    const extra = f.vocab.slice(0, 600).map(v => v && typeof v === 'object' ? { w: str(v.w, 60).toLowerCase(), d: str(v.d, 400), p: str(v.p, 20), s: str(v.s, 320), b: str(v.b, 200), t: time(v.t), k: v.k === true } : null)
+      .filter(v => v && v.w && v.d && !have.has(v.w))
+    setFlag('vocab', [...mine, ...extra].slice(0, 600))
   }
   return result
 }

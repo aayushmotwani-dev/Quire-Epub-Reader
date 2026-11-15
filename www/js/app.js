@@ -1,6 +1,8 @@
 import { initLibrary, refreshLibrary, coverElementFor } from './library.js'
 import { playOpen, playClose } from './openfx.js'
 import { initBackupUI, refreshBackupUI } from './backup-ui.js'
+import { initVocabUI, drawVocab, closeReview } from './vocab-ui.js'
+import { initCoversBulk, missingCount } from './covers-bulk.js'
 import { isPdf, pdfToEpub, ConvertError } from './pdf2epub.js'
 import { initReader, openBook, closeBook, isReading, dictCard, jumpTo } from './reader.js'
 import { lookup, cleanWord } from './dictionary.js'
@@ -90,11 +92,15 @@ async function importFiles(files) {
       if (/\.pdf$/i.test(file.name || '') || file.type === 'application/pdf' || await isPdf(file)) {
         const short = (file.name || 'PDF').replace(/\.pdf$/i, '').slice(0, 40)
         let shown = 0
-        const made = await pdfToEpub(file, { onProgress: (n, total, what = 'Converting') => {
+        // One toast for the whole conversion, with a Cancel button that stays put.
+        const stopper = new AbortController()
+        toast(`Reading “${short}”…`, { duration: 0, action: 'Cancel', onAction: () => stopper.abort() })
+        const line = $('#toast span')
+        const made = await pdfToEpub(file, { signal: stopper.signal, onProgress: (n, total, what = 'Converting') => {
           const now = performance.now()
-          if (now - shown < 250 && n !== total) return
+          if (now - shown < 200 && n !== total) return
           shown = now
-          toast(`${what} “${short}”: page ${n} of ${total}…`, { duration: 0 })
+          if (line?.isConnected) line.textContent = `${what} “${short}”: page ${n} of ${total}…`
         } })
         epub = made.file
         if (made.scanned) notes.push(`“${short}” is a scan, so it was added as page pictures. Its text cannot be resized or searched.`)
@@ -158,7 +164,7 @@ function initFileHandling() {
   // Desktop app: the shell reads the file and hands it over.
   if (window.quireNative?.onOpenBook) {
     window.quireNative.onOpenBook(async ({ name, data }) => {
-      const books = await importFiles([new File([data], name, { type: 'application/epub+zip' })])
+      const books = await importFiles([new File([data], name)])
       if (books.length === 1) goRead(books[0].id)
     })
     return
@@ -305,6 +311,9 @@ function radios(container, name, options, pick) {
 // What each style looks like, drawn small on its card.
 const STYLE_NOTES = {
   quire: 'Clean and quiet',
+  paperback: 'Warm paper, serif titles',
+  studio: 'Graphite and clean lines',
+  blueprint: 'Drafting paper, slab titles',
   typewriter: 'Typed on paper, books too',
   matrix: 'Dot-matrix titles',
 }
@@ -355,7 +364,12 @@ function initSettingsSheet() {
   }
   onSettings(sync)
   sync()
-  $('#open-settings').addEventListener('click', () => { refreshBackupUI(); showSheet('sheet-settings') })
+  $('#open-settings').addEventListener('click', () => {
+    refreshBackupUI()
+    missingCount().then(n => { $('#covers-note').textContent = n ? `${n} ${n === 1 ? 'book has' : 'books have'} no cover.` : 'Every book has a cover.'; $('#covers-open').disabled = !n })
+    showSheet('sheet-settings')
+  })
+  initCoversBulk({ done: async () => { await refreshLibrary() } })
   initBackupUI({ restored: async () => { applyAppMode(); applyLook(); if (!isReading()) await refreshLibrary() } })
 }
 
@@ -388,9 +402,12 @@ function initDictionary() {
   $('#dict-form').addEventListener('submit', e => { e.preventDefault(); search(input.value) })
   let timer = 0
   input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => search(input.value), 320) })
+  initVocabUI({ onPick: w => { input.value = w; search(w); $('#sheet-dict .sheet-body').scrollTo?.({ top: 0, behavior: 'smooth' }) } })
   $('#open-dict').addEventListener('click', () => {
+    closeReview()
     showSheet('sheet-dict')
     drawRecent()
+    drawVocab()
     setTimeout(() => input.focus(), 320)
   })
 }

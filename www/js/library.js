@@ -1,5 +1,5 @@
 import * as db from './db.js'
-import { el, $, iconButton, toast, confirmDialog } from './ui.js'
+import { el, $, iconButton, toast, confirmDialog, showSheet } from './ui.js'
 import { getFlag, setFlag } from './settings.js'
 import { exportHighlights } from './export.js'
 import { editBook } from './edit-book.js'
@@ -13,8 +13,8 @@ let books = []
 let query = ''
 let sort = getFlag('sort', 'recent')
 const STATUSES = { all: 'All', reading: 'Reading', unread: 'Unread', finished: 'Finished' }
-const filter = { status: 'all', author: '', genre: '', series: '' }
-const filtering = () => filter.status !== 'all' || !!filter.author || !!filter.genre || !!filter.series
+const filter = { status: 'all', author: '', genre: '', series: '', shelf: '' }
+const filtering = () => filter.status !== 'all' || !!filter.author || !!filter.genre || !!filter.series || !!filter.shelf
 let handlers = { open: () => {}, add: () => {}, jump: () => {} }
 
 export function initLibrary({ onOpen, onAdd, onJump }) {
@@ -51,9 +51,9 @@ export function initLibrary({ onOpen, onAdd, onJump }) {
     type: 'button', class: 'chip', 'data-status': key, 'aria-pressed': String(key === filter.status), text: label,
     onclick: () => { filter.status = key; renderShelf() },
   })))
-  for (const key of ['author', 'genre', 'series'])
+  for (const key of ['author', 'genre', 'series', 'shelf'])
     $(`#f-${key}`).addEventListener('change', e => { filter[key] = e.target.value; renderShelf() })
-  $('#f-clear').addEventListener('click', () => { Object.assign(filter, { status: 'all', author: '', genre: '', series: '' }); renderShelf() })
+  $('#f-clear').addEventListener('click', () => { Object.assign(filter, { status: 'all', author: '', genre: '', series: '', shelf: '' }); renderShelf() })
   const sortSel = $('#lib-sort')
   sortSel.value = sort
   sortSel.addEventListener('change', e => { sort = e.target.value; setFlag('sort', sort); renderShelf() })
@@ -127,6 +127,7 @@ function statusText(book) {
 
 function render() {
   const has = books.length > 0
+  renderTips(has)
   $('#empty').hidden = has
   $('#shelf').hidden = !has
   renderGoal()
@@ -248,7 +249,8 @@ function renderHero() {
     ? books.filter(b => b.series === current.series && b.id !== current.id && !isFinished(b) && (b.seriesIndex ?? -1) > current.seriesIndex).sort(bySeries)[0]
     : null
   host.replaceChildren(
-    el('button', { type: 'button', class: 'now-cover', 'data-cover-of': current.id, 'aria-label': `Continue reading ${current.title}`, onclick: e => handlers.open(current.id, e.currentTarget.firstElementChild) }, cover(current, 'hero')),
+    el('button', { type: 'button', class: 'now-cover', 'data-cover-of': current.id, 'aria-label': current.cover?.buffer ? `Continue reading ${current.title}` : null, onclick: e => handlers.open(current.id, e.currentTarget.querySelector('.cover')) },
+      current.cover?.buffer ? null : el('span', { class: 'sr', text: 'Continue reading ' }), cover(current, 'hero')),
     el('div', { class: 'now-body' },
       el('p', { class: 'now-kicker', text: 'Continue reading' }),
       el('h2', { class: 'now-title', text: current.title }),
@@ -257,7 +259,7 @@ function renderHero() {
         el('p', { class: 'dot-number', 'aria-label': `${pct} percent read` },
           el('span', { text: String(pct) }), el('span', { class: 'dot-unit', text: '%' })),
         segBar(current.marks, current.progress)),
-      (current.chapter || left) ? el('p', { class: 'now-chapter', text: [current.chapter, left].filter(Boolean).join(', ') }) : null,
+      (current.chapter || left) ? el('p', { class: 'now-chapter', text: [(current.chapter || '').replace(/[\s.,;:]+$/, ''), left].filter(Boolean).join(', ') }) : null,
       el('div', { class: 'now-actions' },
         el('button', { type: 'button', class: 'btn btn-solid', text: 'Continue', onclick: () => handlers.open(current.id, host.querySelector('.cover')) }),
         el('button', { type: 'button', class: 'btn btn-quiet', text: 'Book page', onclick: () => showDetail(current) })),
@@ -326,6 +328,7 @@ function sorted() {
     if (filter.author && b.author !== filter.author) return false
     if (filter.genre && !(b.genres || []).includes(filter.genre)) return false
     if (filter.series && b.series !== filter.series) return false
+    if (filter.shelf && !(b.shelves || []).includes(filter.shelf)) return false
     return true
   })
   return list.sort(filter.series ? bySeries : SORTERS[sort] ?? SORTERS.recent)
@@ -335,7 +338,8 @@ function sorted() {
 // Tiles are kept and reused while the book's record is the same object, so
 // searching, sorting and filtering a large library only moves existing tiles.
 const tiles = new Map()
-function tile(book, { inSeries = false } = {}) {
+function tile(book, { inSeries = false, fresh = false } = {}) {
+  if (fresh) return buildTile(book, inSeries) // a second copy, for a book that stands on two shelves
   const kept = tiles.get(book.id)
   if (kept && kept.book === book && kept.inSeries === inSeries) return kept.node
   const node = buildTile(book, inSeries)
@@ -346,7 +350,9 @@ function tile(book, { inSeries = false } = {}) {
 function buildTile(book, inSeries) {
   const num = inSeries && book.seriesIndex != null ? `Book ${book.seriesIndex}` : ''
   return el('li', { class: 'book' + (isFinished(book) ? ' is-done' : ''), 'data-id': book.id, style: `--p:${Math.max(0, Math.min(1, book.progress || 0))}` },
-    el('button', { type: 'button', class: 'book-open', 'aria-label': `Open ${book.title}`, onclick: e => handlers.open(book.id, e.currentTarget.firstElementChild) }, cover(book)),
+    // A picture cover needs a spoken name; a typeset one already shows its title, so it only gets the word "Open".
+    el('button', { type: 'button', class: 'book-open', 'aria-label': book.cover?.buffer ? `Open ${book.title}` : null, onclick: e => handlers.open(book.id, e.currentTarget.querySelector('.cover')) },
+      book.cover?.buffer ? null : el('span', { class: 'sr', text: 'Open ' }), cover(book)),
     el('div', { class: 'book-meta' },
       el('p', { class: 'book-title', text: book.title, title: book.title }),
       iconButton('more', `More for ${book.title}`, e => openMenu(e.currentTarget, book), { class: 'book-more' })),
@@ -374,6 +380,7 @@ function renderShelf() {
   filter.author = fillSelect('#f-author', 'Author', books.map(b => b.author), filter.author)
   filter.genre = fillSelect('#f-genre', 'Genre', books.flatMap(b => b.genres || []), filter.genre)
   filter.series = fillSelect('#f-series', 'Series', books.map(b => b.series), filter.series)
+  filter.shelf = fillSelect('#f-shelf', 'Shelf', books.flatMap(b => b.shelves || []), filter.shelf)
   for (const chip of $('#f-status').children) chip.setAttribute('aria-pressed', String(chip.dataset.status === filter.status))
   $('#f-clear').hidden = !filtering()
   $('.filters').hidden = books.length < 2
@@ -391,18 +398,31 @@ function renderShelf() {
   const groups = new Map()
   if (!filtering() && !query) for (const b of list) if (b.series) groups.set(b.series, [...(groups.get(b.series) || []), b])
   const series = [...groups.entries()].filter(([, items]) => items.length >= 2)
-  const shelved = new Set(series.flatMap(([, items]) => items.map(b => b.id)))
-  shelves.hidden = !series.length
-  shelves.replaceChildren(...series.map(([name, items]) => {
+  // Your own shelves come first. A book can stand on several of them.
+  const mine = new Map()
+  if (!filtering() && !query) for (const name of shelfNames()) {
+    const items = list.filter(b => (b.shelves || []).includes(name))
+    if (items.length) mine.set(name, items)
+  }
+  const placed = new Set()
+  const ownRows = [...mine.entries()].map(([name, items]) => el('section', { class: 'series-shelf own-shelf', 'aria-label': `${name}, your shelf` },
+    el('header', { class: 'series-head' },
+      el('h3', { text: name }),
+      el('span', { class: 'count', text: items.length === 1 ? '1 book' : `${items.length} books` }),
+      iconButton('trash', `Remove the shelf ${name}`, () => removeShelf(name), { class: 'shelf-remove' })),
+    el('ul', { class: 'shelf-row' }, ...items.map(b => { const node = tile(b, { fresh: placed.has(b.id) }); placed.add(b.id); return node }))))
+  const shelved = new Set([...series.flatMap(([, items]) => items.filter(b => !placed.has(b.id)).map(b => b.id)), ...placed])
+  shelves.hidden = !series.length && !ownRows.length
+  shelves.replaceChildren(...ownRows, ...series.map(([name, items]) => {
     const done = items.filter(isFinished).length
     return el('section', { class: 'series-shelf', 'aria-label': `${name}, a series` },
       el('header', { class: 'series-head' },
         el('h3', { text: name }),
         el('span', { class: 'count', text: `${items.length} books${done ? `, ${done} finished` : ''}` })),
-      el('ul', { class: 'shelf-row' }, ...items.sort(bySeries).map(b => tile(b, { inSeries: true }))))
+      el('ul', { class: 'shelf-row' }, ...items.sort(bySeries).map(b => tile(b, { inSeries: true, fresh: placed.has(b.id) }))))
   }))
   const rest = list.filter(b => !shelved.has(b.id))
-  gridTitle.hidden = !series.length || !rest.length
+  gridTitle.hidden = (!series.length && !ownRows.length) || !rest.length
   grid.replaceChildren(...rest.map(b => tile(b, { inSeries: !!filter.series })))
 }
 
@@ -423,6 +443,7 @@ function openMenu(anchor, book) {
       closeMenu()
       edit(book)
     } }, el('span', { text: 'Edit details' })),
+    el('button', { type: 'button', role: 'menuitem', icon: 'bookmark', onclick: () => { closeMenu(); chooseShelves(book) } }, el('span', { text: 'Shelves' })),
     el('button', { type: 'button', role: 'menuitem', icon: 'export', onclick: async () => { closeMenu(); await exportHighlights(book) } }, el('span', { text: 'Export highlights' })),
     el('button', { type: 'button', role: 'menuitem', class: 'danger', icon: 'trash', onclick: async () => { closeMenu(); await removeBook(book) } }, el('span', { text: 'Remove from library' })))
   menu.hidden = false
@@ -478,7 +499,7 @@ function showDetail(book) {
 // is the one being read, otherwise its place on the shelf.
 export function coverElementFor(id) {
   const hero = document.querySelector('.now-cover')
-  if (hero?.dataset.coverOf === id) return hero.firstElementChild
+  if (hero?.dataset.coverOf === id) return hero.querySelector('.cover')
   for (const li of document.querySelectorAll('#shelf .book')) if (li.dataset.id === id) return li.querySelector('.cover')
   return null
 }
@@ -535,4 +556,74 @@ async function backfillMeta() {
     }
   } finally { backfilling = false }
   if (changed && !document.body.classList.contains('reading')) await refreshLibrary()
+}
+
+// ---------------------------------------------------------------- your own shelves
+// Shelf names live in one list (their order on screen); each book keeps the
+// names of the shelves it stands on.
+const cleanShelf = s => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, 40)
+function shelfNames() {
+  const saved = getFlag('shelves', [])
+  const names = (Array.isArray(saved) ? saved : []).map(cleanShelf).filter(Boolean)
+  // A shelf that came in with a restored book is still a shelf.
+  for (const b of books) for (const n of b.shelves || []) if (!names.includes(n)) names.push(n)
+  return [...new Set(names)].slice(0, 60)
+}
+
+function chooseShelves(book) {
+  const draw = () => {
+    const on = new Set(books.find(b => b.id === book.id)?.shelves || [])
+    const names = shelfNames()
+    $('#shelves-list').replaceChildren(...(names.length ? names.map(name => el('label', { class: 'row switch-row' },
+      el('span', { text: name }),
+      el('input', { type: 'checkbox', class: 'switch', checked: on.has(name) ? '' : null, onchange: async e => {
+        const cur = new Set(books.find(b => b.id === book.id)?.shelves || [])
+        e.target.checked ? cur.add(name) : cur.delete(name)
+        await db.updateBook(book.id, { shelves: [...cur] })
+        await refreshLibrary()
+      } }))) : [el('p', { class: 'setting-note', text: 'No shelves yet. Name your first one below, for example “To read” or “Favourites”.' })]))
+  }
+  $('#shelves-title').textContent = `Shelves for “${book.title.slice(0, 40)}”`
+  $('#shelves-form').onsubmit = async e => {
+    e.preventDefault()
+    const name = cleanShelf($('#shelves-new').value)
+    if (!name) return
+    $('#shelves-new').value = ''
+    if (!shelfNames().includes(name)) setFlag('shelves', [...shelfNames(), name])
+    const cur = new Set(books.find(b => b.id === book.id)?.shelves || [])
+    cur.add(name)
+    await db.updateBook(book.id, { shelves: [...cur] })
+    await refreshLibrary()
+    draw()
+  }
+  draw()
+  showSheet('sheet-shelves')
+}
+
+async function removeShelf(name) {
+  const ok = await confirmDialog({ title: `Remove the shelf “${name}”?`, body: 'The books stay in your library. Only the shelf goes.', confirm: 'Remove shelf' })
+  if (!ok) return
+  for (const b of books) if ((b.shelves || []).includes(name)) await db.updateBook(b.id, { shelves: b.shelves.filter(n => n !== name) })
+  setFlag('shelves', shelfNames().filter(n => n !== name))
+  if (filter.shelf === name) filter.shelf = ''
+  await refreshLibrary()
+  toast('Shelf removed')
+}
+
+// ---------------------------------------------------------------- first tips
+// Shown once, above the library, when there is a book to try them on.
+function renderTips(has) {
+  const host = $('#tips')
+  if (!has || getFlag('tipsSeen', false)) { host.hidden = true; return }
+  if (!host.hidden && host.childElementCount) return
+  const tip = (title, text) => el('li', {}, el('b', { text: title }), el('span', { text }))
+  host.replaceChildren(
+    el('div', { class: 'tips-head' },
+      el('h2', { id: 'tips-title', text: 'Three things worth knowing' }),
+      el('button', { type: 'button', class: 'btn btn-quiet tips-done', text: 'Got it', onclick: () => { setFlag('tipsSeen', true); host.hidden = true } })),
+    el('ul', { class: 'tips-list' },
+      tip('Hold a cover', 'Hold a cover, or right-click it, to see the book\u2019s own page with your progress and every highlight.'),
+      tip('Select any text', 'Inside a book, select a word for its meaning, or a passage to highlight it, add a note or make a quote card.'),
+      tip('Make it yours', 'Settings has six app styles, accent colours and a backup of your whole library. The Aa button inside a book changes the page.')))
+  host.hidden = false
 }

@@ -45,9 +45,33 @@ export function cleanMarkup(str, type) {
 
 const MARKUP = new Set(['application/xhtml+xml', 'text/html', 'image/svg+xml'])
 
+// Kindle and FictionBook files are not loaded through the EPUB loader, so
+// their pages are cleaned here instead, as each one is about to be shown.
+function guardSections(book) {
+  for (const section of book.sections ?? []) {
+    if (typeof section.load !== 'function') continue
+    const load = section.load.bind(section)
+    const unload = section.unload?.bind(section)
+    let mine = null
+    section.load = async () => {
+      const url = await load()
+      if (typeof url !== 'string' || !url.startsWith('blob:')) return url
+      try {
+        const blob = await (await fetch(url)).blob()
+        const type = (blob.type || '').split(';')[0]
+        if (!MARKUP.has(type)) return url
+        if (mine) URL.revokeObjectURL(mine)
+        mine = URL.createObjectURL(new Blob([cleanMarkup(await blob.text(), type)], { type: blob.type }))
+        return mine
+      } catch { return url } // the Content-Security-Policy still stands behind this
+    }
+    section.unload = () => { if (mine) { URL.revokeObjectURL(mine); mine = null } unload?.() }
+  }
+}
+
 export function guardBook(book) {
   const target = book.transformTarget
-  if (!target) return
+  if (!target) return guardSections(book)
   target.addEventListener('load', e => {
     if (e.detail.isScript) e.detail.allow = false
   })
