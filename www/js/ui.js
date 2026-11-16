@@ -61,8 +61,20 @@ export function iconButton(icon, label, onclick, extra = {}) {
 let toastTimer
 export function toast(message, { action, onAction, duration = 3600 } = {}) {
   const host = $('#toast')
-  host.replaceChildren(el('span', { text: message }))
-  if (action) host.append(el('button', { type: 'button', class: 'toast-action', text: action, onclick: () => { hideToast(); onAction?.() } }))
+  // A progress toast updates many times a second. Keep its button in place
+  // and change only the words, so a press on Cancel is never lost mid-update.
+  const span = host.firstElementChild, btn = host.querySelector('.toast-action')
+  if (host.classList.contains('show') && span?.tagName === 'SPAN' && (btn?.textContent ?? null) === (action ?? null)) {
+    if (span.textContent !== message) span.textContent = message
+    if (btn) btn.onclick = () => { hideToast(); onAction?.() }
+  } else {
+    host.replaceChildren(el('span', { text: message }))
+    if (action) {
+      const b = el('button', { type: 'button', class: 'toast-action', text: action })
+      b.onclick = () => { hideToast(); onAction?.() }
+      host.append(b)
+    }
+  }
   host.classList.add('show')
   clearTimeout(toastTimer)
   if (duration) toastTimer = setTimeout(hideToast, duration)

@@ -102,6 +102,9 @@ async function importFiles(files) {
           shown = now
           if (line?.isConnected) line.textContent = `${what} “${short}”: page ${n} of ${total}…`
         } })
+        // Cancel pressed during the last step still means cancel.
+        if (stopper.signal.aborted) throw new ConvertError('Conversion cancelled.')
+        toast(`Adding “${short}”…`, { duration: 0 }) // past the point where Cancel can stop it
         epub = made.file
         if (made.scanned) notes.push(`“${short}” is a scan, so it was added as page pictures. Its text cannot be resized or searched.`)
       }
@@ -366,7 +369,7 @@ function initSettingsSheet() {
   sync()
   $('#open-settings').addEventListener('click', () => {
     refreshBackupUI()
-    missingCount().then(n => { $('#covers-note').textContent = n ? `${n} ${n === 1 ? 'book has' : 'books have'} no cover.` : 'Every book has a cover.'; $('#covers-open').disabled = !n })
+    missingCount().then(n => { $('#covers-note').textContent = n ? `${n} ${n === 1 ? 'book has' : 'books have'} no cover.` : 'Every book has a cover.'; const b = $('#covers-open'); b.disabled = !n; b.hidden = !n })
     showSheet('sheet-settings')
   })
   initCoversBulk({ done: async () => { await refreshLibrary() } })

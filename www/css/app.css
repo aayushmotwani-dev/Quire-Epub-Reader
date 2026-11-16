@@ -1509,3 +1509,62 @@ body:not(.reading) { background-image: radial-gradient(90% 560px at 22% 0, color
 :root[data-style="paperback"] .lib-tab { font-family: var(--serif); }
 :root[data-style="blueprint"] .lib-tab { font-family: 'Quire Bitter', Georgia, serif; }
 .no-match-go { margin-left: 8px; }
+
+/* ================================================================ finish
+   A restraint pass. One surface for every panel, quieter labels so the
+   accent only marks what is on or where you are, softer layered shadows,
+   and motion that answers what you did. */
+:root {
+  --ease-out: cubic-bezier(.2, 0, 0, 1);         /* things arriving */
+  --ease-sheet: cubic-bezier(.32, .72, 0, 1);    /* panels sliding in */
+  --panel: color-mix(in srgb, var(--ink) 3.5%, var(--canvas)); /* opaque, so a background pattern never shows through */
+  --raise: 0 0 0 .5px rgba(0,0,0,.05), 0 2px 6px -2px rgba(0,0,0,.08), 0 24px 48px -16px rgba(0,0,0,.24);
+}
+@media (prefers-color-scheme: dark) {
+  /* Off-white text on black glows less than pure white. */
+  :root:not([data-ui="light"]) { --ink: #f2f2f2; }
+}
+:root[data-ui="dark"]:not([data-page-theme="ember"]) { --ink: #f2f2f2; }
+
+body { text-rendering: optimizeLegibility; font-kerning: normal; }
+
+/* Panels: tips, goals and shelves share one surface. */
+.tips, .goal, .series-shelf { background-color: var(--panel); }
+.tips, .goal { box-shadow: inset 0 0 0 1px var(--hair); border-radius: 18px; }
+.tips .tips-done { background: var(--canvas); box-shadow: inset 0 0 0 1px var(--hair); }
+.tips-list li { align-content: start; } /* the three tips no longer stretch apart */
+.tips-list { gap: 14px 32px; }
+:root[data-style="paperback"] :is(.tips, .goal, .series-shelf) { background-color: color-mix(in srgb, var(--ink) 4%, var(--canvas)); }
+:root[data-style="studio"] .tips { border-radius: 12px; background: var(--canvas); }
+:root[data-style="blueprint"] .tips { background: color-mix(in srgb, var(--canvas) 70%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 22%, transparent); }
+:root[data-corners="square"] :is(.tips, .goal) { border-radius: 2px; }
+
+/* Headings: a touch larger and tighter, so each section reads as a section. */
+.shelf-head h2 { font-size: clamp(var(--t-l), 2.1vw, 25px); letter-spacing: -.018em; }
+.now-title { letter-spacing: -.02em; }
+.count, .book-status, .goal-note, .now-chapter { font-variant-numeric: tabular-nums; }
+
+/* "New" is a quiet note with a small dot, not an orange badge on every cover. */
+.book-status.is-new {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0; background: none; border-radius: 0;
+  color: var(--ink); font-weight: 560; font-size: var(--t-xs); letter-spacing: 0;
+}
+.book-status.is-new::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--signal); flex: none; }
+
+/* Menus open from where you pressed. */
+.menu { border-color: color-mix(in srgb, var(--hair) 70%, transparent); animation: menu-in .18s var(--ease-out); }
+@keyframes menu-in { from { opacity: 0; transform: scale(.97); } }
+.dialog[open] { animation: dialog-in .22s var(--ease-out); }
+@keyframes dialog-in { from { opacity: 0; transform: translateY(8px) scale(.985); } }
+.sheet { transition-timing-function: var(--ease-sheet); }
+
+/* Quiet scrollbars inside panels on desktop. */
+@media (hover: hover) and (pointer: fine) {
+  .sheet-body, .panel, .menu-list { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 18%, transparent) transparent; }
+}
+
+/* Buttons and fields settle instead of snapping. */
+.btn { transition: background-color .15s var(--ease-out), color .15s var(--ease-out), transform .12s var(--ease-out), box-shadow .15s var(--ease-out); }
+.btn-solid { box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 1px 2px rgba(0,0,0,.12); }
+:root[data-corners="square"] .btn-solid { box-shadow: none; }

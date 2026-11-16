@@ -674,6 +674,7 @@ function chapterMarks() {
   // One entry wrapping everything (often the book's own title): look inside.
   for (let i = 0; i < 3 && items.length === 1 && items[0].subitems?.length > 1; i++) items = items[0].subitems
   const where = item => {
+    if (!item?.href) return null // a heading with no link of its own
     try {
       const { index } = view.resolveNavigation(item.href) ?? {}
       return Number.isInteger(index) && fractions[index] != null ? fractions[index] : null
@@ -1148,9 +1149,12 @@ function buildTOC() {
   const make = (items, depth) => el('ol', { class: 'toc-level', style: `--depth:${depth}` },
     ...items.map(item => {
       const label = langMap(item.label)?.trim() || 'Untitled'
-      const btn = el('button', { type: 'button', class: 'toc-item', onclick: () => goAndClose(item.href) },
+      // A heading with no link of its own opens its first chapter.
+      const firstHref = it => it?.href || (it?.subitems ?? []).map(firstHref).find(Boolean) || null
+      const href = firstHref(item)
+      const btn = el('button', { type: 'button', class: 'toc-item', disabled: !href, onclick: () => href && goAndClose(href) },
         el('span', { class: 'toc-label', text: label }))
-      tocItems.push({ href: item.href, el: btn })
+      if (item.href) tocItems.push({ href: item.href, el: btn })
       return el('li', {}, btn, item.subitems?.length && depth < 3 ? make(item.subitems, depth + 1) : null)
     }))
   const toc = R.book.toc ?? []
