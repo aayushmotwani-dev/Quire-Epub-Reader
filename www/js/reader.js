@@ -92,6 +92,8 @@ export async function openBook(id) {
     return false
   }
   guardBook(book)
+  // Picture books (comics, manga) can be turned around by hand from the book's menu.
+  if (book.rendition?.layout === 'pre-paginated' && (record.dir === 'rtl' || record.dir === 'ltr')) book.dir = record.dir
 
   const view = document.createElement('foliate-view')
   view.setAttribute('autohide-cursor', '')

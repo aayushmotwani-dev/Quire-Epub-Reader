@@ -433,6 +433,13 @@ function openMenu(anchor, book) {
   const finished = isFinished(book)
   menu.replaceChildren(
     el('button', { type: 'button', role: 'menuitem', icon: 'contents', onclick: () => { closeMenu(); showDetail(book) } }, el('span', { text: 'Book page' })),
+    book.fixedLayout ? el('button', { type: 'button', role: 'menuitem', icon: 'contents', onclick: async () => {
+      closeMenu()
+      const rtl = (book.dir ?? (book.rtl ? 'rtl' : 'ltr')) === 'rtl'
+      await db.updateBook(book.id, { dir: rtl ? 'ltr' : 'rtl' })
+      toast(rtl ? 'Pages now turn left to right' : 'Pages now turn right to left, like manga')
+      await refreshLibrary()
+    } }, el('span', { text: (book.dir ?? (book.rtl ? 'rtl' : 'ltr')) === 'rtl' ? 'Read left to right' : 'Read right to left (manga)' })) : '',
     el('button', { type: 'button', role: 'menuitem', icon: finished ? 'minus' : 'check', onclick: async () => {
       closeMenu()
       await db.updateBook(book.id, { finishedAt: finished ? 0 : Date.now() })

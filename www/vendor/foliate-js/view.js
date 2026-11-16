@@ -89,7 +89,7 @@ export const makeBook = async file => {
         const loader = await makeZipLoader(file)
         if (isCBZ(file)) {
             const { makeComicBook } = await import('./comic-book.js')
-            book = makeComicBook(loader, file)
+            book = await makeComicBook(loader, file) // Quire: async, it reads ComicInfo.xml
         }
         else if (isFBZ(file)) {
             const { makeFB2 } = await import('./fb2.js')

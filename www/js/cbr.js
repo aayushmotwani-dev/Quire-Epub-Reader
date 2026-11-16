@@ -43,15 +43,17 @@ export async function rarToCbz(file) {
 
   const pages = []
   let total = 0
+  let info = null // ComicInfo.xml: title, series and reading direction
   try {
     const { files } = extractor.extract({
-      files: h => !h.flags.directory && IMAGE.test(h.name) && !/(^|\/)(__MACOSX|\.)/.test(h.name),
+      files: h => !h.flags.directory && (IMAGE.test(h.name) || /(^|\/)comicinfo\.xml$/i.test(h.name)) && !/(^|\/)(__MACOSX|\.)/.test(h.name),
     })
     for (const f of files) {
       const data = f.extraction
       if (!data?.length) continue
       total += data.length
       if (pages.length >= MAX_PAGES || total > MAX_UNPACKED) throw new RarError(`${label} is too large to open.`)
+      if (/comicinfo\.xml$/i.test(f.fileHeader.name)) { if (data.length < 512 * 1024) info = data; continue }
       pages.push({ name: f.fileHeader.name, data })
     }
   } catch (e) {
@@ -72,6 +74,7 @@ export async function rarToCbz(file) {
     const ext = p.name.match(IMAGE)[0].toLowerCase()
     zip.add(`page-${String(i + 1).padStart(Math.max(4, width), '0')}${ext}`, p.data)
   })
+  if (info) zip.add('ComicInfo.xml', info)
   const base = (file.name || 'comic').replace(/\.(cbr|rar)$/i, '')
   return new File([zip.finish()], `${base}.cbz`, { type: 'application/vnd.comicbook+zip' })
 }

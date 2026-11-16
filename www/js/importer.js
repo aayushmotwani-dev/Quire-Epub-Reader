@@ -168,6 +168,7 @@ export async function importFile(file) {
     author: realAuthor(meta),
     language: Array.isArray(meta.language) ? meta.language[0] : (meta.language || ''),
     fixedLayout: parsed.rendition?.layout === 'pre-paginated',
+    rtl: parsed.dir === 'rtl',
     format: kind,
     size: file.size,
     fileName: cleanText(file.name, 200),

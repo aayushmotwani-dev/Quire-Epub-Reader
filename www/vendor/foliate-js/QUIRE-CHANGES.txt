@@ -2,3 +2,4 @@ Quire note: paginator.js has two small changes (attributes turn-duration and tur
 
 - comic-book.js: picture names are matched without regard to case, so PAGE01.JPG counts as a page.
 - epub.js: the series expression is parenthesised; without it an EPUB 3 series was replaced by the (missing) Calibre one.
+- comic-book.js: reads ComicInfo.xml (title, series, writer, genres, language, right-to-left manga); skips __MACOSX files; contents list says "Page 1" and not file names. view.js awaits it.
