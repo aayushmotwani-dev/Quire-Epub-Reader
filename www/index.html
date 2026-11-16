@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- Scripts only from this site: a book can never run code here. Keep in sync with vercel.json. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' blob:; img-src 'self' blob: data:; font-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' blob: data: https://openlibrary.org https://covers.openlibrary.org https://*.archive.org; frame-src 'self' blob:; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' blob:; img-src 'self' blob: data:; font-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' blob: data: https://openlibrary.org https://covers.openlibrary.org https://*.archive.org; frame-src 'self' blob:; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <title>Quire</title>
@@ -106,7 +106,7 @@
   <section id="empty" class="empty" hidden>
     <p class="dot-number empty-number" aria-hidden="true">0</p>
     <h2>No books yet</h2>
-    <p>Add books from this device: EPUB, PDF, Kindle (MOBI, AZW3), FB2 and comics (CBZ). They stay here, and work without a connection.</p>
+    <p>Add books from this device: EPUB, PDF, Kindle (MOBI, AZW3), FB2 and comics (CBZ, CBR). They stay here, and work without a connection.</p>
     <button type="button" class="btn btn-solid" data-action="add">Add books</button>
     <p class="drop-note">Or drop them anywhere on this window.</p>
   </section>
@@ -541,7 +541,7 @@
     </details>
     <section class="credits" aria-label="Credits">
       <h3>Credits</h3>
-      <p>Meanings come from Princeton WordNet 3.0. Pronunciations come from the CMU Pronouncing Dictionary. Typefaces: Geist, Doto, Literata, Source Serif, EB Garamond, Lora, Crimson Pro, Bitter, Inter, Atkinson Hyperlegible, OpenDyslexic and Courier Prime, all under the SIL Open Font License. Pages are laid out with foliate-js (MIT). PDFs are read with pdf.js (Apache 2.0).</p>
+      <p>Meanings come from Princeton WordNet 3.0. Pronunciations come from the CMU Pronouncing Dictionary. Typefaces: Geist, Doto, Literata, Source Serif, EB Garamond, Lora, Crimson Pro, Bitter, Inter, Atkinson Hyperlegible, OpenDyslexic and Courier Prime, all under the SIL Open Font License. Pages are laid out with foliate-js (MIT). PDFs are read with pdf.js (Apache 2.0). CBR comics are unpacked with node-unrar-js (MIT) and the RARLAB unRAR code (freeware).</p>
       <p>Your books, highlights and notes stay on this device. Quire never sends a word you look up anywhere.</p>
     </section>
   </div>
@@ -594,6 +594,6 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div id="drop-overlay" class="drop-overlay" aria-hidden="true"><p>Drop books to add them</p></div>
-<input type="file" id="file-input" accept=".epub,application/epub+zip,.pdf,application/pdf,.mobi,.azw,.azw3,.prc,.fb2,.fbz,.cbz" multiple hidden>
+<input type="file" id="file-input" accept=".epub,application/epub+zip,.pdf,application/pdf,.mobi,.azw,.azw3,.prc,.fb2,.fbz,.cbz,.cbr" multiple hidden>
 </body>
 </html>

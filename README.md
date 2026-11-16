@@ -34,7 +34,7 @@ Your books stay on your device. No account, no server, no tracking.
 
 <img src="docs/screenshots/shelves.png" alt="Your own shelf and a series shelf, with status chips and filters" width="900">
 
-**More than EPUB.** Quire opens EPUB, Kindle (MOBI and AZW3 without copy protection), FictionBook (FB2, FBZ) and comics (CBZ). A PDF is rebuilt as a reflowable EPUB on your device: paragraphs rejoined, running headers and page numbers removed, chapters from the PDF's outline or its headings, pictures kept in place, the first page as the cover. A scanned PDF becomes a book of page pictures, readable but not resizable or searchable. Tables and complex layouts are not rebuilt. A long conversion can be cancelled.
+**More than EPUB.** Quire opens EPUB, Kindle (MOBI and AZW3 without copy protection), FictionBook (FB2, FBZ) and comics (CBZ and CBR; a CBR's pages are unpacked on your device with the official unRAR code). A PDF is rebuilt as a reflowable EPUB on your device: paragraphs rejoined, running headers and page numbers removed, chapters from the PDF's outline or its headings, pictures kept in place, the first page as the cover. A scanned PDF becomes a book of page pictures, readable but not resizable or searchable. Tables and complex layouts are not rebuilt. A long conversion can be cancelled.
 
 **Twelve reading typefaces.** Literata, Source Serif, EB Garamond, Lora, Crimson Pro, Bitter, Geist, Inter, Atkinson Hyperlegible, OpenDyslexic, Courier Prime, or the book's own.
 
@@ -133,5 +133,7 @@ Quire has no backend. Books, highlights, notes, progress and goals live only on 
 
 - [foliate-js](https://github.com/johnfactotum/foliate-js) by John Factotum, MIT licence (`www/vendor/foliate-js/LICENSE`)
 - Princeton WordNet 3.0 and the CMU Pronouncing Dictionary (`www/dict/LICENSE-*.txt`)
-- Literata, Source Serif 4, Atkinson Hyperlegible Next, Geist, Doto and Courier Prime under the SIL Open Font License (`www/fonts/OFL-*.txt`)
+- Literata, Source Serif 4, EB Garamond, Lora, Crimson Pro, Bitter, Inter, Atkinson Hyperlegible Next, OpenDyslexic, Geist, Doto and Courier Prime under the SIL Open Font License (`www/fonts/OFL-*.txt`)
+- [pdf.js](https://github.com/mozilla/pdf.js) by Mozilla, Apache 2.0 licence (`www/vendor/pdfjs/LICENSE`), for reading PDFs
+- [node-unrar-js](https://github.com/YuJianrong/node-unrar.js) (MIT) with the RARLAB unRAR source, freeware (`www/vendor/unrar/`), for opening CBR comics
 - Screenshots use public-domain and openly licensed sample books.

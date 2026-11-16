@@ -1,5 +1,6 @@
 import { makeBook } from '../vendor/foliate-js/view.js'
 import * as db from './db.js'
+import { isRar, rarToCbz, RarError } from './cbr.js'
 import { formatAuthors, langMap } from './ui.js'
 
 const MAX_BYTES = 600 * 1024 * 1024 // 600 MB, far above any normal novel
@@ -22,12 +23,13 @@ const KINDS = {
   fbz: { ext: 'fbz', type: 'application/x-zip-compressed-fb2', label: 'FictionBook' },
   cbz: { ext: 'cbz', type: 'application/vnd.comicbook+zip', label: 'Comic' },
 }
-const BOOK_EXT = /\.(epub|mobi|azw3?|prc|kf8|fb2|fb2\.zip|fbz|cbz)$/i
+const BOOK_EXT = /\.(epub|mobi|azw3?|prc|kf8|fb2|fb2\.zip|fbz|cbz|cbr)$/i
 
 async function kindOf(file) {
   const name = (file.name || '').toLowerCase()
   if (await isZip(file)) {
-    if (name.endsWith('.cbz') || file.type === KINDS.cbz.type) return 'cbz'
+    // A .cbr that is really a ZIP is common: it is a comic all the same.
+    if (/\.cb[zr]$/.test(name) || file.type === KINDS.cbz.type) return 'cbz'
     if (name.endsWith('.fbz') || name.endsWith('.fb2.zip') || file.type === KINDS.fbz.type) return 'fbz'
     return 'epub'
   }
@@ -129,10 +131,14 @@ export async function importFile(file) {
   const label = file.name || 'This file'
   if (!file.size) throw new ImportError(`${label} is empty.`)
   if (file.size > MAX_BYTES) throw new ImportError(`${label} is larger than 600 MB.`)
+  // A CBR comic is a RAR archive: its pages are repacked as a CBZ first.
+  if (await isRar(file)) {
+    try { file = await rarToCbz(file) } catch (e) { throw new ImportError(e instanceof RarError ? e.message : `${label} could not be opened.`) }
+  }
   const kind = await kindOf(file)
   if (!kind) throw new ImportError(/\.(mobi|azw3?|prc|kf8)$/i.test(file.name || '')
     ? `${label} is an old or copy-protected Kindle file that Quire cannot open.`
-    : `${label} is not a book Quire can open. It reads EPUB, PDF, Kindle (MOBI, AZW3), FB2 and CBZ.`)
+    : `${label} is not a book Quire can open. It reads EPUB, PDF, Kindle (MOBI, AZW3), FB2 and comics (CBZ, CBR).`)
 
   const buffer = await file.arrayBuffer()
   const id = await fingerprint(buffer, file)
