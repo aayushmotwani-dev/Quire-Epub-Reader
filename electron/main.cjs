@@ -119,6 +119,28 @@ ipcMain.on('chrome-color', (_e, color) => {
   win.setBackgroundColor(color)
 })
 
+// Book details: an Open Library search for a title and an author. The address
+// is built here from two short strings; only a JSON answer of a sensible size
+// is handed back, as text.
+ipcMain.handle('search-books', async (e, title, author) => {
+  if (!win || e.sender !== win.webContents) return null
+  if (!String(e.senderFrame?.url ?? '').startsWith('app://quire/')) return null
+  const ok = v => typeof v === 'string' && v.length <= 200
+  if (!ok(title) || !ok(author) || !(title.trim() || author.trim())) return null
+  const params = new URLSearchParams({ fields: 'key,title,author_name,first_publish_year,cover_i,subject', limit: '12' })
+  if (title.trim()) params.set('title', title.trim())
+  if (author.trim()) params.set('author', author.trim())
+  const ctl = new AbortController()
+  const timer = setTimeout(() => ctl.abort(), 15000)
+  try {
+    const res = await net.fetch(`https://openlibrary.org/search.json?${params}`, { credentials: 'omit', signal: ctl.signal })
+    if (!res.ok) return null
+    if (!/json/.test(res.headers.get('content-type') || '')) return null
+    const text = await res.text()
+    return text.length <= 2 * 1024 * 1024 ? text : null
+  } catch { return null } finally { clearTimeout(timer) }
+})
+
 // Book details: one cover image from Open Library, asked for by its number.
 // The address is built here, never taken from the page, and only an image of a
 // sensible size from Open Library or the Internet Archive is handed back.

@@ -11,4 +11,6 @@ contextBridge.exposeInMainWorld('quireNative', {
   capturePage(rect) { return ipcRenderer.invoke('capture-page', rect) },
   // Bytes of one Open Library cover, by its numeric id. Resolves to { data, type } or null.
   fetchCover(coverId, size) { return ipcRenderer.invoke('fetch-cover', coverId, size) },
+  // Open Library search results (JSON text) for a title and author, or null.
+  searchBooks(title, author) { return ipcRenderer.invoke('search-books', String(title ?? ''), String(author ?? '')) },
 })

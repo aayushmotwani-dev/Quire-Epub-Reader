@@ -12,6 +12,13 @@ const coverURLs = new Map() // book id -> object URL, revoked when the book leav
 let books = []
 let query = ''
 let sort = getFlag('sort', 'recent')
+// Comics (CBZ and CBR files) live on their own tab. Any book can be moved by hand.
+export const isComic = b => b.kind ? b.kind === 'comic' : b.format === 'cbz'
+let tab = getFlag('libTab', 'books') === 'comics' ? 'comics' : 'books'
+const hasComics = () => books.some(isComic)
+const hasBooks = () => books.some(b => !isComic(b))
+// What the shelf shows: everything, until there is something for both tabs.
+const onTab = () => (hasComics() && hasBooks()) ? books.filter(b => (tab === 'comics') === isComic(b)) : books
 const STATUSES = { all: 'All', reading: 'Reading', unread: 'Unread', finished: 'Finished' }
 const filter = { status: 'all', author: '', genre: '', series: '', shelf: '' }
 const filtering = () => filter.status !== 'all' || !!filter.author || !!filter.genre || !!filter.series || !!filter.shelf
@@ -322,7 +329,7 @@ const SORTERS = {
 const statusOf = b => isFinished(b) ? 'finished' : b.openedAt ? 'reading' : 'unread'
 
 function sorted() {
-  const list = books.filter(b => {
+  const list = onTab().filter(b => {
     if (query && !(b.title.toLowerCase().includes(query) || b.author.toLowerCase().includes(query) || (b.series || '').toLowerCase().includes(query))) return false
     if (filter.status !== 'all' && statusOf(b) !== filter.status) return false
     if (filter.author && b.author !== filter.author) return false
@@ -375,22 +382,52 @@ function fillSelect(id, label, values, current) {
   return sel.value
 }
 
+function renderTabs() {
+  const both = hasComics() && hasBooks()
+  const host = $('#lib-tabs')
+  host.hidden = !both
+  if (!both) return
+  const comics = books.filter(isComic).length, other = books.length - comics
+  host.replaceChildren(...[['books', 'Books', other], ['comics', 'Comics', comics]].map(([key, label, n]) => el('button', {
+    type: 'button', role: 'tab', class: 'lib-tab', id: `tab-${key}`, 'aria-selected': String(tab === key), tabindex: tab === key ? '0' : '-1',
+    onclick: () => switchTab(key),
+    onkeydown: e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); switchTab(key === 'books' ? 'comics' : 'books'); $(`#tab-${tab}`)?.focus() } },
+  }, el('span', { text: label }), el('span', { class: 'count', text: String(n) }))))
+}
+
+function switchTab(key) {
+  if (tab === key) return
+  tab = key
+  setFlag('libTab', key)
+  // Filters belong to one tab; a writer or series from the other would show nothing.
+  Object.assign(filter, { author: '', genre: '', series: '', shelf: '' })
+  renderShelf()
+}
+
 function renderShelf() {
-  $('#lib-count').textContent = books.length === 1 ? '1 book' : `${books.length} books`
-  filter.author = fillSelect('#f-author', 'Author', books.map(b => b.author), filter.author)
-  filter.genre = fillSelect('#f-genre', 'Genre', books.flatMap(b => b.genres || []), filter.genre)
-  filter.series = fillSelect('#f-series', 'Series', books.map(b => b.series), filter.series)
-  filter.shelf = fillSelect('#f-shelf', 'Shelf', books.flatMap(b => b.shelves || []), filter.shelf)
+  renderTabs()
+  const pool = onTab()
+  const noun = (hasComics() && hasBooks() && tab === 'comics') || (!hasBooks() && hasComics()) ? ['comic', 'comics'] : ['book', 'books']
+  $('#lib-count').textContent = pool.length === 1 ? `1 ${noun[0]}` : `${pool.length} ${noun[1]}`
+  filter.author = fillSelect('#f-author', 'Author', pool.map(b => b.author), filter.author)
+  filter.genre = fillSelect('#f-genre', 'Genre', pool.flatMap(b => b.genres || []), filter.genre)
+  filter.series = fillSelect('#f-series', 'Series', pool.map(b => b.series), filter.series)
+  filter.shelf = fillSelect('#f-shelf', 'Shelf', pool.flatMap(b => b.shelves || []), filter.shelf)
   for (const chip of $('#f-status').children) chip.setAttribute('aria-pressed', String(chip.dataset.status === filter.status))
   $('#f-clear').hidden = !filtering()
-  $('.filters').hidden = books.length < 2
+  $('.filters').hidden = pool.length < 2
 
   const grid = $('#grid'), shelves = $('#series-shelves'), gridTitle = $('#grid-title')
   const list = sorted()
   if (!list.length && books.length) {
     shelves.hidden = gridTitle.hidden = true
     shelves.replaceChildren()
-    grid.replaceChildren(el('li', { class: 'no-match', text: query ? `Nothing matches “${query}”.` : 'No books match these filters.' }))
+    // The search may match on the other tab: say so, with a way there.
+    const other = tab === 'comics' ? 'books' : 'comics'
+    const there = query && hasComics() && hasBooks() ? books.filter(b => (other === 'comics') === isComic(b) && (b.title.toLowerCase().includes(query) || b.author.toLowerCase().includes(query) || (b.series || '').toLowerCase().includes(query))).length : 0
+    grid.replaceChildren(el('li', { class: 'no-match' },
+      el('span', { text: query ? `Nothing here matches “${query}”.` : `No ${noun[1]} match these filters.` }),
+      there ? el('button', { type: 'button', class: 'link no-match-go', text: `${there} on ${other === 'comics' ? 'Comics' : 'Books'}`, onclick: () => switchTab(other) }) : ''))
     return
   }
 
@@ -451,6 +488,13 @@ function openMenu(anchor, book) {
       edit(book)
     } }, el('span', { text: 'Edit details' })),
     el('button', { type: 'button', role: 'menuitem', icon: 'bookmark', onclick: () => { closeMenu(); chooseShelves(book) } }, el('span', { text: 'Shelves' })),
+    el('button', { type: 'button', role: 'menuitem', icon: 'export', onclick: async () => {
+      closeMenu()
+      const toComics = !isComic(book)
+      await db.updateBook(book.id, { kind: toComics ? 'comic' : 'book' })
+      toast(toComics ? 'Moved to Comics' : 'Moved to Books')
+      await refreshLibrary()
+    } }, el('span', { text: isComic(book) ? 'Move to Books' : 'Move to Comics' })),
     el('button', { type: 'button', role: 'menuitem', icon: 'export', onclick: async () => { closeMenu(); await exportHighlights(book) } }, el('span', { text: 'Export highlights' })),
     el('button', { type: 'button', role: 'menuitem', class: 'danger', icon: 'trash', onclick: async () => { closeMenu(); await removeBook(book) } }, el('span', { text: 'Remove from library' })))
   menu.hidden = false

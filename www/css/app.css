@@ -1497,3 +1497,15 @@ body:not(.reading) { background-image: radial-gradient(90% 560px at 22% 0, color
 
 /* The finished tick sits on the cover's bottom corner: covers differ in height, their bottoms do not. */
 .book.is-done .book-open::before { top: auto; bottom: -7px; }
+
+/* ---------------------------------------------------------------- books and comics tabs */
+.lib-tabs { display: flex; gap: 28px; margin: -4px 0 22px; border-bottom: 1px solid var(--hair); }
+.lib-tabs[hidden] { display: none; }
+.lib-tab { position: relative; display: inline-flex; align-items: baseline; gap: 8px; padding: 10px 0 12px; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: var(--t-m); font-weight: 560; cursor: pointer; }
+.lib-tab:hover { color: var(--ink); }
+.lib-tab[aria-selected="true"] { color: var(--ink); }
+.lib-tab[aria-selected="true"]::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 2px; background: var(--signal); }
+.lib-tab .count { font-size: var(--t-s); font-weight: 450; }
+:root[data-style="paperback"] .lib-tab { font-family: var(--serif); }
+:root[data-style="blueprint"] .lib-tab { font-family: 'Quire Bitter', Georgia, serif; }
+.no-match-go { margin-left: 8px; }

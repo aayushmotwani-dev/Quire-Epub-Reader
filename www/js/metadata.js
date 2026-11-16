@@ -15,15 +15,45 @@ const clean = (s, max = 300) => String(s ?? '').replace(/\s+/g, ' ').trim().slic
 export const coverUrl = (coverId, size = 'M') =>
   Number.isSafeInteger(coverId) && coverId > 0 && /^[SML]$/.test(size) ? `${COVERS}${coverId}-${size}.jpg?default=false` : ''
 
+const SEARCH_TIMEOUT = 15_000
+
+// The answer from Open Library, as text. The browser asks first; if it cannot
+// (no answer in time, or the request is refused), the desktop and phone apps
+// ask through their own narrow, fixed route.
+async function searchText(url, { title, author, signal }) {
+  const timer = new AbortController()
+  const stop = () => timer.abort()
+  signal?.addEventListener('abort', stop, { once: true })
+  const clock = setTimeout(stop, SEARCH_TIMEOUT)
+  try {
+    const res = await fetch(url, { signal: timer.signal, credentials: 'omit', referrerPolicy: 'no-referrer' })
+    if (!res.ok) throw new Error(`Open Library answered ${res.status}`)
+    return await res.text()
+  } catch (e) {
+    if (signal?.aborted) throw e
+    const viaApp = await window.quireNative?.searchBooks?.(title, author).catch(() => null)
+    if (typeof viaApp === 'string') return viaApp
+    const http = window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins?.CapacitorHttp : null
+    if (http) {
+      const r = await http.get({ url, responseType: 'text', connectTimeout: SEARCH_TIMEOUT, readTimeout: SEARCH_TIMEOUT })
+      if (r?.status === 200) return typeof r.data === 'string' ? r.data : JSON.stringify(r.data)
+    }
+    throw e
+  } finally {
+    clearTimeout(clock)
+    signal?.removeEventListener('abort', stop)
+  }
+}
+
 export async function searchBooks({ title = '', author = '' }, { signal } = {}) {
   title = clean(title, 200); author = clean(author, 200)
   if (!title && !author) return []
   const params = new URLSearchParams({ fields: 'key,title,author_name,first_publish_year,cover_i,subject', limit: '12' })
   if (title) params.set('title', title)
   if (author) params.set('author', author)
-  const res = await fetch(`${SEARCH}?${params}`, { signal, credentials: 'omit', referrerPolicy: 'no-referrer' })
-  if (!res.ok) throw new Error(`Open Library answered ${res.status}`)
-  const data = await res.json()
+  const text = await searchText(`${SEARCH}?${params}`, { title, author, signal })
+  let data
+  try { data = JSON.parse(text) } catch { throw new Error('Open Library sent something unreadable') }
   const docs = Array.isArray(data?.docs) ? data.docs : []
   return docs.slice(0, 12).map(d => ({
     title: clean(d?.title),

@@ -29,7 +29,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/
 const COLORS = new Set(['yellow', 'green', 'blue', 'pink', 'purple'])
 
 // ---------------------------------------------------------------- saving
-const BOOK_FIELDS = ['id', 'title', 'author', 'language', 'fixedLayout', 'size', 'fileName', 'addedAt', 'openedAt', 'progress', 'cfi', 'chapter', 'finishedAt', 'minsLeft', 'series', 'seriesIndex', 'genres', 'format', 'shelves', 'dir', 'rtl']
+const BOOK_FIELDS = ['id', 'title', 'author', 'language', 'fixedLayout', 'size', 'fileName', 'addedAt', 'openedAt', 'progress', 'cfi', 'chapter', 'finishedAt', 'minsLeft', 'series', 'seriesIndex', 'genres', 'format', 'shelves', 'dir', 'rtl', 'kind']
 const NOTE_FIELDS = ['id', 'bookId', 'type', 'cfi', 'index', 'color', 'text', 'note', 'chapter', 'fraction', 'createdAt']
 const pick = (obj, keys) => Object.fromEntries(keys.filter(k => obj[k] !== undefined).map(k => [k, obj[k]]))
 
@@ -87,6 +87,7 @@ function cleanBook(raw) {
   if (typeof raw.series === 'string') { out.series = text(raw.series, 120).replace(/\s+/g, ' ').trim(); out.seriesIndex = out.series ? cleanSeriesIndex(raw.seriesIndex) : null }
   if (Array.isArray(raw.genres)) out.genres = cleanGenres(raw.genres.filter(g => typeof g === 'string').slice(0, 12))
   if (raw.dir === 'rtl' || raw.dir === 'ltr') out.dir = raw.dir
+  if (raw.kind === 'comic' || raw.kind === 'book') out.kind = raw.kind
   if (Array.isArray(raw.shelves)) out.shelves = [...new Set(raw.shelves.filter(n => typeof n === 'string').map(n => n.replace(/\s+/g, ' ').trim().slice(0, 40)).filter(Boolean))].slice(0, 60)
   if (raw.finishedAt !== undefined) out.finishedAt = time(raw.finishedAt)
   if (Number.isFinite(raw.minsLeft) && raw.minsLeft >= 0 && raw.minsLeft < 100_000) out.minsLeft = Math.round(raw.minsLeft)
@@ -193,6 +194,7 @@ export async function restoreBackup(file, { onProgress = () => {} } = {}) {
       if (b.series !== undefined) { patch.series = b.series; patch.seriesIndex = b.seriesIndex }
       if (b.genres !== undefined) patch.genres = b.genres
       if (b.dir) patch.dir = b.dir
+      if (b.kind) patch.kind = b.kind
       if (b.shelves?.length) patch.shelves = b.shelves
       const coverSize = zip.size(`covers/${b.id}`)
       if (b.hasCover && coverSize > 0 && coverSize <= MAX_COVER_BYTES) {

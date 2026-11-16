@@ -37,6 +37,15 @@ function status(text) {
   const s = $('#edit-status')
   s.hidden = !text
   s.textContent = text || ''
+  // The search sits low in the sheet: bring what it says into view.
+  if (text) requestAnimationFrame(() => s.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }))
+}
+
+function busy(on) {
+  const btn = $('#edit-search')
+  btn.disabled = on
+  btn.textContent = on ? 'Searching…' : 'Search'
+  btn.setAttribute('aria-busy', String(on))
 }
 
 async function useImage(blob) {
@@ -102,17 +111,21 @@ async function runSearch() {
   const ctl = searching = new AbortController()
   clearResults()
   if (!title.trim() && !author.trim()) return status('Type a title or an author first.')
-  status('Searching…')
+  status('Searching Open Library…')
+  busy(true)
   let results
   try {
     results = await searchBooks({ title, author }, { signal: ctl.signal })
   } catch (e) {
     if (ctl.signal.aborted) return
-    return status(navigator.onLine === false ? 'You are offline. Searching needs the internet.' : 'Open Library could not be reached. Try again in a moment.')
+    return status(navigator.onLine === false ? 'You are offline. Searching needs the internet.' : 'Open Library did not answer. Check your internet connection and try again.')
+  } finally {
+    if (searching === ctl) busy(false)
   }
   if (ctl.signal.aborted) return
   if (!results.length) return status('Nothing found. Try a shorter title, or only the author.')
   status(`${results.length} ${results.length === 1 ? 'match' : 'matches'}. Pick one to fill in the details.`)
+  requestAnimationFrame(() => list.firstElementChild?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
   list.replaceChildren(...results.map(r => {
     const img = r.coverId ? el('img', { alt: '', hidden: '' }) : null
     if (img) fetchCover(r.coverId, 'S').then(blob => {
@@ -158,5 +171,6 @@ export function editBook(target, { saved = () => {}, knownSeries = [] } = {}) {
   setCover(target.cover)
   status('')
   clearResults()
+  busy(false)
   showSheet('sheet-edit', { onClose: () => { searching?.abort(); book = null; setCover(null); clearResults() } })
 }
