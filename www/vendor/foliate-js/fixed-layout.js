@@ -243,6 +243,27 @@ export class FixedLayout extends HTMLElement {
             return arr
         }, [{}])
     }
+    // Quire: where the pages on screen are, for the page-turn animation.
+    get visiblePages() {
+        const frames = (this.#center ? [this.#center] : [this.#left, this.#right])
+            .filter(f => f?.element && !f.blank && f.element.style.display !== 'none')
+        const rects = frames.map(f => f.element.getBoundingClientRect())
+            .filter(r => r.width > 0 && r.height > 0)
+        if (!rects.length) return null
+        const left = Math.min(...rects.map(r => r.left))
+        const top = Math.min(...rects.map(r => r.top))
+        const right = Math.max(...rects.map(r => r.right))
+        const bottom = Math.max(...rects.map(r => r.bottom))
+        return { rect: { left, top, width: right - left, height: bottom - top }, columns: rects.length }
+    }
+    // Quire: a hidden half of a spread (phone held upright) still to show.
+    #hasSide(side) {
+        if (this.#center || !this.#portrait) return false
+        const f = side === 'left' ? this.#left : this.#right
+        return !!f && !f.blank && f.element?.style?.display === 'none'
+    }
+    get atStart() { return !this.#hasSide(this.rtl ? 'right' : 'left') && this.#index <= 0 }
+    get atEnd() { return !this.#hasSide(this.rtl ? 'left' : 'right') && this.#index >= this.#spreads.length - 1 }
     get index() {
         const spread = this.#spreads[this.#index]
         const section = spread?.center ?? (this.#side === 'left'

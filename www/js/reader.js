@@ -278,6 +278,8 @@ function applySettings() {
   document.body.style.background = THEMES[themeKey].bg
 
   const { renderer } = R.view
+  R.turnStyle = effectiveTurn(s)
+  R.fxOn = R.turnStyle === 'page'
   if (!R.view.isFixedLayout) {
     renderer.setAttribute('flow', s.flow)
     renderer.setAttribute('gap', `${MARGINS[s.margin]}%`)
@@ -290,7 +292,6 @@ function applySettings() {
     // "Page flip" without a page picture (a browser): a slower slide with a shadow along the moving edge.
     renderer.setAttribute('turn-duration', String(Math.round((turn === 'page' ? 520 : 300) * SPEED_FACTOR[s.speed])))
     renderer.setAttribute('turn-ease', turn === 'page' ? 'in-out' : 'out')
-    R.fxOn = turn === 'page'
     renderer.setStyles?.(readingCSS(s, themeKey))
     setTimeout(fillMarginals, 300)
   }
@@ -432,7 +433,36 @@ function turn(where) {
   if (!$('#r-jump').hidden && ++R.jumpTurns > 3) hideJump()
   tick()
   if (shouldFlip(where)) flipTurn(where)
+  else if (R.view.isFixedLayout && R.turnStyle !== 'none') slideTurn(where)
   else R.view[where]()
+}
+
+// For comics and other fixed-layout books, which way the page moves on screen.
+// In a right-to-left book "next" goes to the left.
+function leafForward(where) {
+  const rtl = R.book.dir === 'rtl'
+  return where === 'goRight' || (where === 'next' && !rtl) || (where === 'prev' && rtl)
+}
+function goesNext(where) {
+  const rtl = R.book.dir === 'rtl'
+  return where === 'next' || (where === 'goRight' && !rtl) || (where === 'goLeft' && rtl)
+}
+
+// Comics without a page picture (a web browser), or with Slide chosen: the
+// new page slides in from the side it comes from.
+async function slideTurn(where) {
+  const reader = R
+  const r = reader.view.renderer
+  const before = r.index
+  await reader.view[where]()
+  if (R !== reader || r.index === before) return
+  const speed = SPEED_FACTOR[getSettings().speed] ?? 1
+  const dx = (leafForward(where) ? 1 : -1) * Math.min(56, window.innerWidth * 0.07)
+  r.getAnimations?.().forEach(a => a.cancel())
+  r.animate?.([
+    { opacity: 0, transform: `translateX(${dx}px)` },
+    { opacity: 1, transform: 'none' },
+  ], { duration: Math.round((reader.turnStyle === 'page' ? 340 : 260) * speed), easing: 'cubic-bezier(.2, 0, 0, 1)' })
 }
 
 // With Page flip on a phone, a sideways swipe flips the page instead of
@@ -443,7 +473,10 @@ function installSwipeFlip(target, doc) {
   if (!target || target.quireSwipe) return
   target.quireSwipe = true
   let start = null
-  const active = () => R && canFlip() && R.fxOn && !R.view.isFixedLayout && !R.view.renderer.scrolled && R.book.dir !== 'rtl'
+  // Comics always turn with a sideways swipe (the engine has no drag of its
+  // own for them); text books do when Page flip is on.
+  const active = () => R && (R.view.isFixedLayout ||
+    (canFlip() && R.fxOn && !R.view.renderer.scrolled && R.book.dir !== 'rtl'))
   target.addEventListener('touchstart', e => {
     start = e.touches.length === 1 && active()
       ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: e.timeStamp, moved: false }
@@ -480,25 +513,36 @@ function installSwipeFlip(target, doc) {
 function shouldFlip(where) {
   if (!canFlip() || !R.fxOn) return false
   const r = R.view.renderer
-  if (R.view.isFixedLayout || r.scrolled || R.book.dir === 'rtl') return false
+  if (R.view.isFixedLayout) {
+    if (!r.visiblePages) return false
+  } else if (r.scrolled || R.book.dir === 'rtl') return false
   if (R.chromeOn || !$('#sel-pop').hidden || isSheetOpen() || document.querySelector('dialog[open]')) return false
   if ((globalThis.visualViewport?.scale ?? 1) !== 1) return false // pinch-zoomed: the picture would not line up
-  const forward = where === 'next' || where === 'goRight'
+  const forward = R.view.isFixedLayout ? goesNext(where) : where === 'next' || where === 'goRight'
   return !(forward ? r.atEnd : r.atStart) // nothing to turn to: let the engine decide
 }
 
 async function flipTurn(where) {
   const reader = R
   const r = reader.view.renderer
-  const box = r.getBoundingClientRect()
-  const size = r.size
   const theme = THEMES[resolveThemeKey(getSettings())]
+  let rect, columns, forward
+  if (reader.view.isFixedLayout) {
+    const pages = r.visiblePages
+    rect = pages.rect
+    columns = pages.columns
+    forward = leafForward(where)
+  } else {
+    const box = r.getBoundingClientRect()
+    const size = r.size
+    rect = { left: box.left + (box.width - size) / 2, top: box.top, width: size, height: box.height }
+    columns = Math.max(1, Math.min(2, r.heads?.length || 1))
+    forward = where === 'next' || where === 'goRight'
+  }
   let moved = false
   try {
     await flipPage({
-      rect: { left: box.left + (box.width - size) / 2, top: box.top, width: size, height: box.height },
-      columns: Math.max(1, Math.min(2, r.heads?.length || 1)),
-      forward: where === 'next' || where === 'goRight',
+      rect, columns, forward,
       paper: theme.bg,
       dark: !!theme.dark,
       host: $('#reader'),
@@ -513,7 +557,10 @@ async function flipTurn(where) {
     })
   } catch { /* fall through */ }
   // The flip could not start (no picture): turn the usual way. Never turn twice.
-  if (!moved && R === reader) reader.view[where]()
+  if (!moved && R === reader) {
+    if (reader.view.isFixedLayout && reader.turnStyle !== 'none') await slideTurn(where)
+    else reader.view[where]()
+  }
   if (R === reader && reader.queuedTurns?.length) turn(reader.queuedTurns.shift())
 }
 
@@ -1380,7 +1427,7 @@ function syncAppearanceSheet() {
   $('#aa-turn-note').hidden = !(systemWantsStill() && !s.turnChosen)
   for (const r of $$('input[name="aa-flow"]')) r.checked = r.value === s.flow
   $('#aa-pages-row').hidden = s.flow === 'scrolled'
-  $('#aa-turn-row').hidden = s.flow === 'scrolled'
+  $('#aa-turn-row').hidden = s.flow === 'scrolled' && !R?.view?.isFixedLayout
 }
 
 // ---------------------------------------------------------------- footnotes

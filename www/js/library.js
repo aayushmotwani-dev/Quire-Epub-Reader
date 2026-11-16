@@ -26,6 +26,15 @@ let handlers = { open: () => {}, add: () => {}, jump: () => {} }
 
 export function initLibrary({ onOpen, onAdd, onJump }) {
   handlers = { open: onOpen, add: onAdd, jump: onJump }
+  // The top bar stays on screen; it gains its frosted ground once the page
+  // has moved under it.
+  const head = $('.lib-head')
+  let headFrame = 0
+  const markStuck = () => {
+    headFrame = 0
+    head.classList.toggle('stuck', window.scrollY > 4)
+  }
+  window.addEventListener('scroll', () => { if (!headFrame) headFrame = requestAnimationFrame(markStuck) }, { passive: true })
   $('#open-stats').addEventListener('click', () => {
     const year = new Date().getFullYear()
     const done = books.filter(isFinished)
